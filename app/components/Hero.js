@@ -52,20 +52,22 @@ export default function Hero() {
           </p>
   
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button style={{
-              background: 'var(--cream)',
-              color: 'var(--black)',
-              border: 'none',
-              padding: '16px 40px',
-              fontSize: '11px',
-              letterSpacing: '3px',
-              textTransform: 'uppercase',
-              fontFamily: 'Jost, sans-serif',
-              fontWeight: '400',
-              cursor: 'pointer',
+          <a href="/menu" style={{
+            background: 'var(--cream)',
+            color: 'var(--black)',
+            border: 'none',
+            padding: '16px 40px',
+            fontSize: '11px',
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            fontFamily: 'Jost, sans-serif',
+            fontWeight: '400',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            display: 'inline-block',
             }}>
               Ver el menú
-            </button>
+                </a>
   
             <button style={{
               background: 'transparent',
