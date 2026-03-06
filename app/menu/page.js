@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { useCart } from '../components/CartContext'
 
 const platos = [
   { emoji: '🍖', nombre: 'Milanesa napolitana', descripcion: 'Con puré rústico de papa', categoria: 'carne', tiempo: '10 min', precio: '$8.900', puntos: '+45 pts' },
@@ -31,12 +33,27 @@ const filtros = [
   { id: 'pescado', label: 'Pescado' },
 ]
 
+function nombreASlug(nombre) {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+}
+
 export default function MenuPage() {
   const [filtroActivo, setFiltroActivo] = useState('todos')
+  const { agregarItem, items } = useCart()
 
   const platosFiltrados = filtroActivo === 'todos'
     ? platos
     : platos.filter(p => p.categoria === filtroActivo)
+
+  const cantidadEnCarrito = (nombre) => {
+    const item = items.find(i => i.nombre === nombre)
+    return item ? item.cantidad : 0
+  }
 
   return (
     <main>
@@ -74,6 +91,7 @@ export default function MenuPage() {
         display: 'flex',
         gap: '12px',
         borderBottom: '1px solid var(--cream-deep)',
+        flexWrap: 'wrap',
       }}>
         {filtros.map((f) => (
           <button
@@ -90,6 +108,7 @@ export default function MenuPage() {
               fontFamily: 'Jost, sans-serif',
               fontWeight: '300',
               cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
           >
             {f.label}
@@ -107,94 +126,145 @@ export default function MenuPage() {
           gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '16px',
         }}>
-          {platosFiltrados.map((plato) => (
-            <div key={plato.nombre} style={{
-              border: '1px solid var(--cream-deep)',
-              background: 'var(--white)',
-              cursor: 'pointer',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                background: 'var(--cream)',
-                height: '160px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '56px',
+          {platosFiltrados.map((plato) => {
+            const cantidad = cantidadEnCarrito(plato.nombre)
+            const slug = nombreASlug(plato.nombre)
+            return (
+              <div key={plato.nombre} style={{
+                border: '1px solid var(--cream-deep)',
+                background: 'var(--white)',
+                overflow: 'hidden',
               }}>
-                {plato.emoji}
-              </div>
-
-              <div style={{ padding: '20px' }}>
-                <h3 style={{
-                  fontFamily: 'Playfair Display, serif',
-                  fontSize: '18px',
-                  color: 'var(--black)',
-                  fontWeight: '400',
-                  marginBottom: '4px',
-                }}>
-                  {plato.nombre}
-                </h3>
-
-                <p style={{
-                  fontSize: '12px',
-                  color: '#999',
-                  fontWeight: '300',
-                  marginBottom: '16px',
-                }}>
-                  {plato.descripcion}
-                </p>
-
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginBottom: '16px',
-                  flexWrap: 'wrap',
-                }}>
-                  {[`⏱ ${plato.tiempo}`, '❄️ Freezer', plato.puntos].map((tag) => (
-                    <span key={tag} style={{
-                      fontSize: '9px',
-                      letterSpacing: '1px',
-                      textTransform: 'uppercase',
-                      color: 'var(--olive-mid)',
-                      background: 'var(--cream)',
-                      padding: '4px 10px',
-                      fontWeight: '300',
-                    }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}>
-                  <span style={{
-                    fontFamily: 'Playfair Display, serif',
-                    fontSize: '22px',
-                    color: 'var(--black)',
-                  }}>
-                    {plato.precio}
-                  </span>
-                  <button style={{
-                    background: 'var(--black)',
-                    color: 'var(--cream)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    fontSize: '9px',
-                    letterSpacing: '2px',
-                    textTransform: 'uppercase',
-                    fontFamily: 'Jost, sans-serif',
+                {/* Imagen clickeable → detalle */}
+                <Link href={`/menu/${slug}`} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    background: 'var(--cream)',
+                    height: '160px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '56px',
+                    position: 'relative',
                     cursor: 'pointer',
+                    transition: 'background 0.2s ease',
                   }}>
-                    Agregar
-                  </button>
+                    {plato.emoji}
+                    {cantidad > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: 'var(--black)',
+                        color: 'var(--cream)',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontFamily: 'Jost, sans-serif',
+                        fontWeight: '400',
+                      }}>
+                        {cantidad}
+                      </div>
+                    )}
+                    {/* Hover hint */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '10px',
+                      right: '12px',
+                      fontSize: '8px',
+                      letterSpacing: '2px',
+                      textTransform: 'uppercase',
+                      color: 'var(--black)',
+                      opacity: 0.4,
+                      fontFamily: 'Jost, sans-serif',
+                    }}>
+                      Ver detalle →
+                    </div>
+                  </div>
+                </Link>
+
+                <div style={{ padding: '20px' }}>
+                  {/* Nombre clickeable */}
+                  <Link href={`/menu/${slug}`} style={{ textDecoration: 'none' }}>
+                    <h3 style={{
+                      fontFamily: 'Playfair Display, serif',
+                      fontSize: '18px',
+                      color: 'var(--black)',
+                      fontWeight: '400',
+                      marginBottom: '4px',
+                      cursor: 'pointer',
+                    }}>
+                      {plato.nombre}
+                    </h3>
+                  </Link>
+
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#999',
+                    fontWeight: '300',
+                    marginBottom: '16px',
+                  }}>
+                    {plato.descripcion}
+                  </p>
+
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '16px',
+                    flexWrap: 'wrap',
+                  }}>
+                    {[`⏱ ${plato.tiempo}`, '❄️ Freezer', plato.puntos].map((tag) => (
+                      <span key={tag} style={{
+                        fontSize: '9px',
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                        color: 'var(--olive-mid)',
+                        background: 'var(--cream)',
+                        padding: '4px 10px',
+                        fontWeight: '300',
+                      }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                    <span style={{
+                      fontFamily: 'Playfair Display, serif',
+                      fontSize: '22px',
+                      color: 'var(--black)',
+                    }}>
+                      {plato.precio}
+                    </span>
+                    <button
+                      onClick={() => agregarItem(plato)}
+                      style={{
+                        background: cantidad > 0 ? 'var(--olive)' : 'var(--black)',
+                        color: 'var(--cream)',
+                        border: 'none',
+                        padding: '10px 20px',
+                        fontSize: '9px',
+                        letterSpacing: '2px',
+                        textTransform: 'uppercase',
+                        fontFamily: 'Jost, sans-serif',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s ease',
+                      }}
+                    >
+                      {cantidad > 0 ? 'Agregar otro' : 'Agregar'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 

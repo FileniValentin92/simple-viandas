@@ -1,4 +1,6 @@
 import "./globals.css"
+import { CartProvider } from './components/CartContext'
+import CarritoDrawer from './components/CarritoDrawer'
 
 export const metadata = {
   title: "SIMPLE — Viandas al vacío",
@@ -14,7 +16,12 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <CartProvider>
+          {children}
+          <CarritoDrawer />
+        </CartProvider>
+      </body>
     </html>
   )
 }
