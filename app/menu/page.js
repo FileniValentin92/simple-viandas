@@ -60,39 +60,13 @@ export default function MenuPage() {
       <Navbar />
 
       {/* Header */}
-      <section style={{
-        background: 'var(--black)',
-        padding: '64px',
-      }}>
-        <p style={{
-          fontSize: '10px',
-          letterSpacing: '5px',
-          textTransform: 'uppercase',
-          color: 'var(--gold)',
-          fontWeight: '300',
-          marginBottom: '12px',
-        }}>
-          El menú completo
-        </p>
-        <h1 style={{
-          fontFamily: 'Playfair Display, serif',
-          fontSize: '56px',
-          color: 'var(--cream)',
-          fontWeight: '400',
-        }}>
-          15 platos fijos,<br /><em>siempre disponibles.</em>
-        </h1>
+      <section className="menu-header">
+        <p>El menú completo</p>
+        <h1>15 platos fijos,<br /><em>siempre disponibles.</em></h1>
       </section>
 
       {/* Filtros */}
-      <section style={{
-        background: 'var(--cream)',
-        padding: '32px 64px',
-        display: 'flex',
-        gap: '12px',
-        borderBottom: '1px solid var(--cream-deep)',
-        flexWrap: 'wrap',
-      }}>
+      <section className="menu-filtros">
         {filtros.map((f) => (
           <button
             key={f.id}
@@ -117,15 +91,8 @@ export default function MenuPage() {
       </section>
 
       {/* Grilla de platos */}
-      <section style={{
-        background: 'var(--white)',
-        padding: '48px 64px',
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '16px',
-        }}>
+      <section className="menu-grilla">
+        <div className="menu-grid">
           {platosFiltrados.map((plato) => {
             const cantidad = cantidadEnCarrito(plato.nombre)
             const slug = nombreASlug(plato.nombre)
@@ -135,7 +102,7 @@ export default function MenuPage() {
                 background: 'var(--white)',
                 overflow: 'hidden',
               }}>
-                {/* Imagen clickeable → detalle */}
+                {/* Imagen clickeable */}
                 <Link href={`/menu/${slug}`} style={{ textDecoration: 'none' }}>
                   <div style={{
                     background: 'var(--cream)',
@@ -146,7 +113,6 @@ export default function MenuPage() {
                     fontSize: '56px',
                     position: 'relative',
                     cursor: 'pointer',
-                    transition: 'background 0.2s ease',
                   }}>
                     {plato.emoji}
                     {cantidad > 0 && (
@@ -169,7 +135,6 @@ export default function MenuPage() {
                         {cantidad}
                       </div>
                     )}
-                    {/* Hover hint */}
                     <div style={{
                       position: 'absolute',
                       bottom: '10px',
@@ -187,7 +152,6 @@ export default function MenuPage() {
                 </Link>
 
                 <div style={{ padding: '20px' }}>
-                  {/* Nombre clickeable */}
                   <Link href={`/menu/${slug}`} style={{ textDecoration: 'none' }}>
                     <h3 style={{
                       fontFamily: 'Playfair Display, serif',
@@ -235,11 +199,13 @@ export default function MenuPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    gap: '12px',
                   }}>
                     <span style={{
                       fontFamily: 'Playfair Display, serif',
                       fontSize: '22px',
                       color: 'var(--black)',
+                      flexShrink: 0,
                     }}>
                       {plato.precio}
                     </span>
@@ -249,13 +215,14 @@ export default function MenuPage() {
                         background: cantidad > 0 ? 'var(--olive)' : 'var(--black)',
                         color: 'var(--cream)',
                         border: 'none',
-                        padding: '10px 20px',
+                        padding: '10px 16px',
                         fontSize: '9px',
                         letterSpacing: '2px',
                         textTransform: 'uppercase',
                         fontFamily: 'Jost, sans-serif',
                         cursor: 'pointer',
                         transition: 'background 0.2s ease',
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       {cantidad > 0 ? 'Agregar otro' : 'Agregar'}

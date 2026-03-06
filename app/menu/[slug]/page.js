@@ -38,26 +38,15 @@ export default function DetallePlato() {
   const { agregarItem, items } = useCart()
 
   const plato = platos.find(p => nombreASlug(p.nombre) === params.slug)
-
   const cantidad = items.find(i => i.nombre === plato?.nombre)?.cantidad || 0
 
   if (!plato) {
     return (
       <main>
         <Navbar />
-        <div style={{
-          background: 'var(--white)',
-          minHeight: '60vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '16px',
-        }}>
+        <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
           <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px' }}>Plato no encontrado</p>
-          <Link href="/menu" style={{ fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--black)' }}>
-            ← Volver al menú
-          </Link>
+          <Link href="/menu" style={{ fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--black)' }}>← Volver al menú</Link>
         </div>
         <Footer />
       </main>
@@ -69,36 +58,17 @@ export default function DetallePlato() {
       <Navbar />
 
       {/* Breadcrumb */}
-      <div style={{
-        background: 'var(--cream)',
-        padding: '16px 64px',
-        borderBottom: '1px solid var(--cream-deep)',
-      }}>
-        <Link href="/menu" style={{
-          fontSize: '9px',
-          letterSpacing: '3px',
-          textTransform: 'uppercase',
-          color: 'var(--black)',
-          textDecoration: 'none',
-          opacity: 0.5,
-          fontWeight: '300',
-        }}>
+      <div style={{ background: 'var(--cream)', padding: '16px 24px', borderBottom: '1px solid var(--cream-deep)' }}>
+        <Link href="/menu" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--black)', textDecoration: 'none', opacity: 0.5, fontWeight: '300' }}>
           ← Volver al menú
         </Link>
       </div>
 
       {/* Contenido principal */}
-      <section style={{
-        background: 'var(--white)',
-        padding: '64px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '80px',
-        alignItems: 'start',
-      }}>
+      <section className="detalle-content">
 
-        {/* Imagen / Emoji */}
-        <div style={{
+        {/* Imagen */}
+        <div className="detalle-imagen" style={{
           background: 'var(--cream)',
           aspectRatio: '1',
           display: 'flex',
@@ -108,7 +78,6 @@ export default function DetallePlato() {
           position: 'relative',
         }}>
           {plato.emoji}
-          {/* Tag categoría */}
           <div style={{
             position: 'absolute',
             top: '24px',
@@ -127,21 +96,12 @@ export default function DetallePlato() {
         </div>
 
         {/* Info */}
-        <div style={{ paddingTop: '16px' }}>
-          {/* Subtítulo */}
-          <p style={{
-            fontSize: '9px',
-            letterSpacing: '4px',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-            fontWeight: '300',
-            marginBottom: '12px',
-          }}>
+        <div style={{ paddingTop: '8px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '12px' }}>
             {plato.descripcion}
           </p>
 
-          {/* Nombre */}
-          <h1 style={{
+          <h1 className="detalle-titulo" style={{
             fontFamily: 'Playfair Display, serif',
             fontSize: '48px',
             color: 'var(--black)',
@@ -152,24 +112,12 @@ export default function DetallePlato() {
             {plato.nombre}
           </h1>
 
-          {/* Descripción larga */}
-          <p style={{
-            fontSize: '14px',
-            color: '#666',
-            fontWeight: '300',
-            lineHeight: '1.8',
-            marginBottom: '32px',
-          }}>
+          <p style={{ fontSize: '14px', color: '#666', fontWeight: '300', lineHeight: '1.8', marginBottom: '32px' }}>
             {plato.descripcionLarga}
           </p>
 
           {/* Tags */}
-          <div style={{
-            display: 'flex',
-            gap: '10px',
-            marginBottom: '40px',
-            flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[`⏱ ${plato.tiempo}`, '❄️ Freezer hasta 3 meses', '🔥 Listo en microondas', plato.puntos].map(tag => (
               <span key={tag} style={{
                 fontSize: '9px',
@@ -186,14 +134,11 @@ export default function DetallePlato() {
           </div>
 
           {/* Info nutricional */}
-          <div style={{
+          <div className="detalle-nutri" style={{
             borderTop: '1px solid var(--cream-deep)',
             borderBottom: '1px solid var(--cream-deep)',
             padding: '24px 0',
             marginBottom: '40px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
           }}>
             {[
               { label: 'Calorías', valor: plato.kcal, unidad: 'kcal' },
@@ -202,22 +147,10 @@ export default function DetallePlato() {
               { label: 'Grasas', valor: plato.grasas, unidad: '' },
             ].map(item => (
               <div key={item.label} style={{ textAlign: 'center' }}>
-                <p style={{
-                  fontFamily: 'Playfair Display, serif',
-                  fontSize: '24px',
-                  color: 'var(--black)',
-                  fontWeight: '400',
-                  marginBottom: '4px',
-                }}>
+                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)', fontWeight: '400', marginBottom: '4px' }}>
                   {item.valor}<span style={{ fontSize: '12px' }}>{item.unidad}</span>
                 </p>
-                <p style={{
-                  fontSize: '8px',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  color: '#999',
-                  fontWeight: '300',
-                }}>
+                <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '300' }}>
                   {item.label}
                 </p>
               </div>
@@ -225,27 +158,19 @@ export default function DetallePlato() {
           </div>
 
           {/* Precio + botón */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <span style={{
-              fontFamily: 'Playfair Display, serif',
-              fontSize: '40px',
-              color: 'var(--black)',
-            }}>
+          <div className="detalle-precio-row">
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--black)' }}>
               {plato.precio}
             </span>
-
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', width: '100%', maxWidth: '260px' }}>
               <button
                 onClick={() => agregarItem(plato)}
                 style={{
+                  width: '100%',
                   background: cantidad > 0 ? 'var(--olive)' : 'var(--black)',
                   color: 'var(--cream)',
                   border: 'none',
-                  padding: '16px 40px',
+                  padding: '16px 24px',
                   fontSize: '10px',
                   letterSpacing: '3px',
                   textTransform: 'uppercase',
@@ -258,13 +183,7 @@ export default function DetallePlato() {
                 {cantidad > 0 ? `Agregar otro (${cantidad} en carrito)` : 'Agregar al carrito'}
               </button>
               {cantidad > 0 && (
-                <p style={{
-                  fontSize: '9px',
-                  color: 'var(--olive)',
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  fontWeight: '300',
-                }}>
+                <p style={{ fontSize: '9px', color: 'var(--olive)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '300' }}>
                   ✓ {cantidad} {cantidad === 1 ? 'unidad' : 'unidades'} en tu pedido
                 </p>
               )}
