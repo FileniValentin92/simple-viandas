@@ -7,6 +7,12 @@ export const metadata = {
   description: "Comida real, lista en 10 minutos",
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
