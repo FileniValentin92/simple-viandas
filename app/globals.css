@@ -214,3 +214,17 @@ nav {
     gap: 28px;
   }
 }
+
+/* ─── NAVBAR RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 20px !important;
+    height: 60px !important;
+  }
+  .navbar-links {
+    display: none !important;
+  }
+  .navbar-mobile-actions {
+    display: flex !important;
+  }
+}
