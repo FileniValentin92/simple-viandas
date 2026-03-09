@@ -32,8 +32,85 @@ nav {
 /* ─── NAVBAR MOBILE ─── */
 @media (max-width: 768px) {
   nav {
-    padding: 0 20px !important;
+    padding: 0 16px !important;
     height: 60px !important;
+  }
+}
+
+/* ─── HERO ─── */
+.hero-titulo {
+  font-size: 72px;
+}
+.hero-botones {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .hero-titulo {
+    font-size: 44px !important;
+  }
+  .hero-botones {
+    flex-direction: column;
+  }
+  .hero-botones a,
+  .hero-botones button {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ─── PACKS ─── */
+.packs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.section-titulo {
+  font-size: 40px;
+}
+
+@media (max-width: 768px) {
+  .packs-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .section-titulo {
+    font-size: 28px !important;
+  }
+}
+
+/* ─── MENU DESTACADO ─── */
+.menu-destacado-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .menu-destacado-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .menu-destacado-header a {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ─── RESEÑAS ─── */
+.resenas-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .resenas-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
