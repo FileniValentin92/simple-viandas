@@ -55,6 +55,17 @@ export default function Navbar() {
         }}>
           Packs
         </Link>
+        <Link href="/perfil" style={{
+          fontSize: '9px',
+          letterSpacing: '3px',
+          textTransform: 'uppercase',
+          color: 'var(--cream)',
+          textDecoration: 'none',
+          fontWeight: '300',
+          opacity: 0.7,
+        }}>
+          Mi Perfil
+        </Link>
 
         {/* Carrito */}
         <button

@@ -227,11 +227,28 @@ export default function PerfilPage() {
 
                   {/* Items */}
                   <div style={{ marginBottom: '16px' }}>
-                    {pedido.items.map(item => (
-                      <p key={item.nombre} style={{ fontSize: '13px', color: '#666', fontWeight: '300', marginBottom: '4px' }}>
-                        · {item.nombre} x{item.cantidad}
-                      </p>
-                    ))}
+                    {pedido.items.map(item => {
+                      const datos = catalogoPlatos[item.nombre]
+                      const precioUnitario = datos ? parseInt(datos.precio.replace(/\$|\./g, '')) : 0
+                      const precioTotal = precioUnitario * item.cantidad
+                      const precioFormateado = '$' + precioTotal.toLocaleString('es-AR')
+                      return (
+                        <div key={item.nombre} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '8px',
+                          gap: '12px',
+                        }}>
+                          <span style={{ fontSize: '13px', color: '#666', fontWeight: '300' }}>
+                            · {item.nombre} x{item.cantidad}
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300', whiteSpace: 'nowrap' }}>
+                            {precioFormateado}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {/* Footer pedido */}
