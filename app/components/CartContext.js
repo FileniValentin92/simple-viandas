@@ -8,17 +8,17 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([])
   const [abierto, setAbierto] = useState(false)
 
-  const agregarItem = (plato) => {
+  const agregarItem = (plato, cantidad = 1) => {
     setItems(prev => {
       const existente = prev.find(i => i.nombre === plato.nombre)
       if (existente) {
         return prev.map(i =>
-          i.nombre === plato.nombre ? { ...i, cantidad: i.cantidad + 1 } : i
+          i.nombre === plato.nombre ? { ...i, cantidad: i.cantidad + cantidad } : i
         )
       }
-      return [...prev, { ...plato, cantidad: 1 }]
+      return [...prev, { ...plato, cantidad }]
     })
-    setAbierto(true)
+    // Ya no abre el carrito automáticamente
   }
 
   const quitarItem = (nombre) => {

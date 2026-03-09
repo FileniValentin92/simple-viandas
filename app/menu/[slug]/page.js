@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '../../components/Navbar'
@@ -36,9 +37,10 @@ function nombreASlug(nombre) {
 export default function DetallePlato() {
   const params = useParams()
   const { agregarItem, items } = useCart()
+  const [cantidad, setCantidad] = useState(1)
 
   const plato = platos.find(p => nombreASlug(p.nombre) === params.slug)
-  const cantidad = items.find(i => i.nombre === plato?.nombre)?.cantidad || 0
+  const enCarrito = items.find(i => i.nombre === plato?.nombre)?.cantidad || 0
 
   if (!plato) {
     return (
@@ -53,18 +55,21 @@ export default function DetallePlato() {
     )
   }
 
+  const handleAgregar = () => {
+    agregarItem(plato, cantidad)
+    setCantidad(1)
+  }
+
   return (
     <main>
       <Navbar />
 
-      {/* Breadcrumb */}
       <div style={{ background: 'var(--cream)', padding: '16px 24px', borderBottom: '1px solid var(--cream-deep)' }}>
         <Link href="/menu" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--black)', textDecoration: 'none', opacity: 0.5, fontWeight: '300' }}>
           ← Volver al menú
         </Link>
       </div>
 
-      {/* Contenido principal */}
       <section className="detalle-content">
 
         {/* Imagen */}
@@ -116,30 +121,16 @@ export default function DetallePlato() {
             {plato.descripcionLarga}
           </p>
 
-          {/* Tags */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[`⏱ ${plato.tiempo}`, '❄️ Freezer hasta 3 meses', '🔥 Listo en microondas', plato.puntos].map(tag => (
-              <span key={tag} style={{
-                fontSize: '9px',
-                letterSpacing: '1px',
-                textTransform: 'uppercase',
-                color: 'var(--olive-mid)',
-                background: 'var(--cream)',
-                padding: '6px 14px',
-                fontWeight: '300',
-              }}>
+              <span key={tag} style={{ fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--olive-mid)', background: 'var(--cream)', padding: '6px 14px', fontWeight: '300' }}>
                 {tag}
               </span>
             ))}
           </div>
 
           {/* Info nutricional */}
-          <div className="detalle-nutri" style={{
-            borderTop: '1px solid var(--cream-deep)',
-            borderBottom: '1px solid var(--cream-deep)',
-            padding: '24px 0',
-            marginBottom: '40px',
-          }}>
+          <div className="detalle-nutri" style={{ borderTop: '1px solid var(--cream-deep)', borderBottom: '1px solid var(--cream-deep)', padding: '24px 0', marginBottom: '40px' }}>
             {[
               { label: 'Calorías', valor: plato.kcal, unidad: 'kcal' },
               { label: 'Proteínas', valor: plato.proteinas, unidad: '' },
@@ -150,45 +141,59 @@ export default function DetallePlato() {
                 <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)', fontWeight: '400', marginBottom: '4px' }}>
                   {item.valor}<span style={{ fontSize: '12px' }}>{item.unidad}</span>
                 </p>
-                <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '300' }}>
-                  {item.label}
-                </p>
+                <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '300' }}>{item.label}</p>
               </div>
             ))}
           </div>
 
-          {/* Precio + botón */}
-          <div className="detalle-precio-row">
-            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--black)' }}>
-              {plato.precio}
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', width: '100%', maxWidth: '260px' }}>
+          {/* Precio */}
+          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--black)', display: 'block', marginBottom: '24px' }}>
+            {plato.precio}
+          </span>
+
+          {/* Selector cantidad + botón */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+            {/* Controles */}
+            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--cream-deep)', overflow: 'hidden' }}>
               <button
-                onClick={() => agregarItem(plato)}
-                style={{
-                  width: '100%',
-                  background: cantidad > 0 ? 'var(--olive)' : 'var(--black)',
-                  color: 'var(--cream)',
-                  border: 'none',
-                  padding: '16px 24px',
-                  fontSize: '10px',
-                  letterSpacing: '3px',
-                  textTransform: 'uppercase',
-                  fontFamily: 'Jost, sans-serif',
-                  fontWeight: '300',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s ease',
-                }}
-              >
-                {cantidad > 0 ? `Agregar otro (${cantidad} en carrito)` : 'Agregar al carrito'}
-              </button>
-              {cantidad > 0 && (
-                <p style={{ fontSize: '9px', color: 'var(--olive)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '300' }}>
-                  ✓ {cantidad} {cantidad === 1 ? 'unidad' : 'unidades'} en tu pedido
-                </p>
-              )}
+                onClick={() => setCantidad(c => Math.max(1, c - 1))}
+                style={{ width: '40px', height: '44px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >−</button>
+              <span style={{ width: '36px', textAlign: 'center', fontFamily: 'Playfair Display, serif', fontSize: '18px', color: 'var(--black)' }}>
+                {cantidad}
+              </span>
+              <button
+                onClick={() => setCantidad(c => c + 1)}
+                style={{ width: '40px', height: '44px', background: 'var(--black)', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >+</button>
             </div>
+
+            {/* Botón agregar */}
+            <button
+              onClick={handleAgregar}
+              style={{
+                flex: 1,
+                background: 'var(--black)',
+                color: 'var(--cream)',
+                border: 'none',
+                padding: '14px 24px',
+                fontSize: '10px',
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                fontFamily: 'Jost, sans-serif',
+                fontWeight: '300',
+                cursor: 'pointer',
+              }}
+            >
+              Agregar al carrito
+            </button>
           </div>
+
+          {enCarrito > 0 && (
+            <p style={{ fontSize: '9px', color: 'var(--olive)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '300' }}>
+              ✓ {enCarrito} {enCarrito === 1 ? 'unidad' : 'unidades'} en tu carrito
+            </p>
+          )}
         </div>
       </section>
 

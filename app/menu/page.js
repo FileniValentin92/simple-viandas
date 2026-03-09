@@ -42,18 +42,121 @@ function nombreASlug(nombre) {
     .replace(/[^a-z0-9-]/g, '')
 }
 
+function SelectorCantidad({ plato }) {
+  const [cantidad, setCantidad] = useState(1)
+  const { agregarItem, items } = useCart()
+
+  const enCarrito = items.find(i => i.nombre === plato.nombre)?.cantidad || 0
+
+  const restar = () => setCantidad(c => Math.max(1, c - 1))
+  const sumar = () => setCantidad(c => c + 1)
+
+  const handleAgregar = () => {
+    agregarItem(plato, cantidad)
+    setCantidad(1)
+  }
+
+  return (
+    <div>
+      {/* Selector cantidad + botón agregar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
+      }}>
+        {/* Controles − cantidad + */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          border: '1px solid var(--cream-deep)',
+          overflow: 'hidden',
+        }}>
+          <button
+            onClick={restar}
+            style={{
+              width: '32px',
+              height: '36px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              color: 'var(--black)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >−</button>
+          <span style={{
+            width: '28px',
+            textAlign: 'center',
+            fontFamily: 'Playfair Display, serif',
+            fontSize: '15px',
+            color: 'var(--black)',
+          }}>
+            {cantidad}
+          </span>
+          <button
+            onClick={sumar}
+            style={{
+              width: '32px',
+              height: '36px',
+              background: 'var(--black)',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              color: 'var(--cream)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >+</button>
+        </div>
+
+        {/* Botón agregar */}
+        <button
+          onClick={handleAgregar}
+          style={{
+            flex: 1,
+            background: 'var(--black)',
+            color: 'var(--cream)',
+            border: 'none',
+            padding: '10px 12px',
+            fontSize: '9px',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            fontFamily: 'Jost, sans-serif',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Agregar
+        </button>
+      </div>
+
+      {/* Badge en carrito */}
+      {enCarrito > 0 && (
+        <p style={{
+          marginTop: '8px',
+          fontSize: '9px',
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          color: 'var(--olive)',
+          fontWeight: '300',
+        }}>
+          ✓ {enCarrito} en tu carrito
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function MenuPage() {
   const [filtroActivo, setFiltroActivo] = useState('todos')
-  const { agregarItem, items } = useCart()
 
   const platosFiltrados = filtroActivo === 'todos'
     ? platos
     : platos.filter(p => p.categoria === filtroActivo)
-
-  const cantidadEnCarrito = (nombre) => {
-    const item = items.find(i => i.nombre === nombre)
-    return item ? item.cantidad : 0
-  }
 
   return (
     <main>
@@ -94,7 +197,6 @@ export default function MenuPage() {
       <section className="menu-grilla">
         <div className="menu-grid">
           {platosFiltrados.map((plato) => {
-            const cantidad = cantidadEnCarrito(plato.nombre)
             const slug = nombreASlug(plato.nombre)
             return (
               <div key={plato.nombre} style={{
@@ -102,7 +204,7 @@ export default function MenuPage() {
                 background: 'var(--white)',
                 overflow: 'hidden',
               }}>
-                {/* Imagen clickeable */}
+                {/* Imagen clickeable → detalle */}
                 <Link href={`/menu/${slug}`} style={{ textDecoration: 'none' }}>
                   <div style={{
                     background: 'var(--cream)',
@@ -115,26 +217,6 @@ export default function MenuPage() {
                     cursor: 'pointer',
                   }}>
                     {plato.emoji}
-                    {cantidad > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '12px',
-                        right: '12px',
-                        background: 'var(--black)',
-                        color: 'var(--cream)',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '400',
-                      }}>
-                        {cantidad}
-                      </div>
-                    )}
                     <div style={{
                       position: 'absolute',
                       bottom: '10px',
@@ -174,12 +256,7 @@ export default function MenuPage() {
                     {plato.descripcion}
                   </p>
 
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginBottom: '16px',
-                    flexWrap: 'wrap',
-                  }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                     {[`⏱ ${plato.tiempo}`, '❄️ Freezer', plato.puntos].map((tag) => (
                       <span key={tag} style={{
                         fontSize: '9px',
@@ -195,39 +272,24 @@ export default function MenuPage() {
                     ))}
                   </div>
 
+                  {/* Precio */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '12px',
+                    marginBottom: '16px',
                   }}>
                     <span style={{
                       fontFamily: 'Playfair Display, serif',
                       fontSize: '22px',
                       color: 'var(--black)',
-                      flexShrink: 0,
                     }}>
                       {plato.precio}
                     </span>
-                    <button
-                      onClick={() => agregarItem(plato)}
-                      style={{
-                        background: cantidad > 0 ? 'var(--olive)' : 'var(--black)',
-                        color: 'var(--cream)',
-                        border: 'none',
-                        padding: '10px 16px',
-                        fontSize: '9px',
-                        letterSpacing: '2px',
-                        textTransform: 'uppercase',
-                        fontFamily: 'Jost, sans-serif',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {cantidad > 0 ? 'Agregar otro' : 'Agregar'}
-                    </button>
                   </div>
+
+                  {/* Selector cantidad */}
+                  <SelectorCantidad plato={plato} />
                 </div>
               </div>
             )
