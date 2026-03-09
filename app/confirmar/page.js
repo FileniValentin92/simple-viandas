@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useCart } from '../components/CartContext'
+import { supabase } from '../lib/supabaseClient'
 
 export default function ConfirmarPage() {
   const { items, totalPrecio, totalPuntos, totalItems, vaciarCarrito } = useCart()
@@ -19,6 +20,7 @@ export default function ConfirmarPage() {
   })
 
   const [enviado, setEnviado] = useState(false)
+  const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
   const formatPrecio = (n) => '$' + n.toLocaleString('es-AR')
@@ -27,14 +29,45 @@ export default function ConfirmarPage() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
     if (!form.nombre.trim() || !form.telefono.trim() || !form.direccion.trim()) {
       setError('Por favor completá nombre, teléfono y dirección.')
       return
     }
+
     setError('')
-    setEnviado(true)
-    vaciarCarrito()
+    setCargando(true)
+
+    try {
+      const { error: supabaseError } = await supabase
+        .from('pedidos')
+        .insert([{
+          nombre: form.nombre.trim(),
+          telefono: form.telefono.trim(),
+          direccion: form.direccion.trim(),
+          piso: form.piso.trim() || null,
+          comentarios: form.comentarios.trim() || null,
+          items: items.map(i => ({
+            nombre: i.nombre,
+            emoji: i.emoji,
+            cantidad: i.cantidad,
+            precio: i.precio,
+          })),
+          total: totalPrecio,
+          puntos: totalPuntos,
+          estado: 'pendiente',
+        }])
+
+      if (supabaseError) throw supabaseError
+
+      setEnviado(true)
+      vaciarCarrito()
+    } catch (err) {
+      console.error('Error al guardar pedido:', err)
+      setError('Hubo un problema al enviar el pedido. Intentá de nuevo.')
+    } finally {
+      setCargando(false)
+    }
   }
 
   // Pantalla de éxito
@@ -203,21 +236,26 @@ export default function ConfirmarPage() {
               </span>
             </div>
 
-            <button onClick={handleConfirmar} style={{
-              width: '100%',
-              background: 'var(--black)',
-              color: 'var(--cream)',
-              border: 'none',
-              padding: '18px',
-              fontSize: '10px',
-              letterSpacing: '3px',
-              textTransform: 'uppercase',
-              fontFamily: 'Jost, sans-serif',
-              fontWeight: '300',
-              cursor: 'pointer',
-              marginTop: '8px',
-            }}>
-              Hacer pedido
+            <button
+              onClick={handleConfirmar}
+              disabled={cargando}
+              style={{
+                width: '100%',
+                background: cargando ? 'var(--olive-mid)' : 'var(--black)',
+                color: 'var(--cream)',
+                border: 'none',
+                padding: '18px',
+                fontSize: '10px',
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                fontFamily: 'Jost, sans-serif',
+                fontWeight: '300',
+                cursor: cargando ? 'not-allowed' : 'pointer',
+                marginTop: '8px',
+                transition: 'background 0.2s ease',
+              }}
+            >
+              {cargando ? 'Enviando...' : 'Hacer pedido'}
             </button>
 
             <p style={{ fontSize: '9px', color: '#bbb', textAlign: 'center', fontWeight: '300', letterSpacing: '1px' }}>
