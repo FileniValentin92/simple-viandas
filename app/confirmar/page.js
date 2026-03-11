@@ -7,27 +7,47 @@ import Link from 'next/link'
 
 export default function ConfirmarPage() {
   const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
-  const [form, setForm] = useState({ nombre: '', telefono: '', direccion: '', piso: '', comentarios: '' })
+  const [form, setForm] = useState({ nombre: '', telefono: '', direccion: '', localidad: '', piso: '', comentarios: '' })
   const [pagoMetodo, setPagoMetodo] = useState('efectivo')
   const [enviando, setEnviando] = useState(false)
+  const [redirigiendo, setRedirigiendo] = useState(false)
   const [exito, setExito] = useState(false)
-  const [error, setError] = useState('')
+  const [errores, setErrores] = useState({})
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    // Teléfono: solo números
+    if (name === 'telefono' && !/^\d*$/.test(value)) return
+    setForm({ ...form, [name]: value })
+    setErrores({ ...errores, [name]: '' })
+  }
+
+  const validar = () => {
+    const nuevosErrores = {}
+    if (!form.nombre.trim()) nuevosErrores.nombre = 'Ingresá tu nombre completo'
+    if (!form.telefono.trim()) {
+      nuevosErrores.telefono = 'Ingresá tu teléfono'
+    } else if (form.telefono.length < 8 || form.telefono.length > 15) {
+      nuevosErrores.telefono = 'El teléfono debe tener entre 8 y 15 dígitos'
+    }
+    if (!form.direccion.trim()) nuevosErrores.direccion = 'Ingresá tu dirección'
+    if (!form.localidad.trim()) nuevosErrores.localidad = 'Ingresá tu localidad'
+    return nuevosErrores
+  }
 
   const handleSubmit = async () => {
-    if (!form.nombre || !form.telefono || !form.direccion) {
-      setError('Por favor completá nombre, teléfono y dirección.')
+    const nuevosErrores = validar()
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErrores(nuevosErrores)
       return
     }
     setEnviando(true)
-    setError('')
 
     if (pagoMetodo === 'efectivo') {
       const { error: supaError } = await supabase.from('pedidos').insert([{
         nombre: form.nombre,
         telefono: form.telefono,
-        direccion: form.direccion,
+        direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
         piso: form.piso,
         comentarios: form.comentarios,
         items: items,
@@ -39,7 +59,7 @@ export default function ConfirmarPage() {
       }])
       setEnviando(false)
       if (supaError) {
-        setError('Hubo un error al enviar el pedido. Intentá de nuevo.')
+        setErrores({ general: 'Hubo un error al enviar el pedido. Intentá de nuevo.' })
       } else {
         vaciarCarrito()
         setExito(true)
@@ -49,7 +69,7 @@ export default function ConfirmarPage() {
       sessionStorage.setItem('pedido_pendiente', JSON.stringify({
         nombre: form.nombre,
         telefono: form.telefono,
-        direccion: form.direccion,
+        direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
         piso: form.piso,
         comentarios: form.comentarios,
         items: items,
@@ -65,7 +85,7 @@ export default function ConfirmarPage() {
             items,
             nombre: form.nombre,
             telefono: form.telefono,
-            direccion: form.direccion,
+            direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
             piso: form.piso,
             comentarios: form.comentarios,
           }),
@@ -73,16 +93,43 @@ export default function ConfirmarPage() {
         const data = await res.json()
         if (data.init_point) {
           vaciarCarrito()
-          window.location.href = data.init_point
+          setEnviando(false)
+          setRedirigiendo(true)
+          setTimeout(() => {
+            window.location.href = data.init_point
+          }, 2000)
         } else {
-          setError('Error al conectar con MercadoPago. Intentá de nuevo.')
+          setErrores({ general: 'Error al conectar con MercadoPago. Intentá de nuevo.' })
           setEnviando(false)
         }
       } catch (e) {
-        setError('Error al conectar con MercadoPago. Intentá de nuevo.')
+        setErrores({ general: 'Error al conectar con MercadoPago. Intentá de nuevo.' })
         setEnviando(false)
       }
     }
+  }
+
+  // Pantalla de redirección a MP
+  if (redirigiendo) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif', padding: '40px 20px' }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <div style={{ width: '64px', height: '64px', border: '3px solid rgba(0,158,227,0.3)', borderTop: '3px solid #009ee3', borderRadius: '50%', margin: '0 auto 32px', animation: 'spin 1s linear infinite' }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '26px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>
+            Redirigiendo a MercadoPago
+          </h2>
+          <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.7' }}>
+            En un momento vas a ser redirigido al checkout seguro de MercadoPago para completar tu pago.
+          </p>
+          <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <div style={{ width: '8px', height: '8px', background: '#009ee3', borderRadius: '50%', animation: 'pulse 1s ease-in-out infinite' }} />
+            <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+            <span style={{ fontSize: '11px', color: '#009ee3', letterSpacing: '2px', textTransform: 'uppercase' }}>Procesando...</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (exito) {
@@ -117,20 +164,20 @@ export default function ConfirmarPage() {
     )
   }
 
-  const inputStyle = {
+  const inputStyle = (campo) => ({
     display: 'block',
     width: '100%',
     background: '#fff',
-    border: '1px solid #E0E0E0',
+    border: `1px solid ${errores[campo] ? '#e74c3c' : '#E0E0E0'}`,
     color: 'var(--black)',
     padding: '14px 16px',
     fontSize: '14px',
     fontFamily: 'Jost, sans-serif',
     fontWeight: '300',
     outline: 'none',
-    marginBottom: '12px',
+    marginBottom: errores[campo] ? '4px' : '12px',
     boxSizing: 'border-box',
-  }
+  })
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--black)', fontFamily: 'Jost, sans-serif', padding: '60px 20px' }}>
@@ -141,30 +188,45 @@ export default function ConfirmarPage() {
           <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '8px' }}>Confirmar pedido</p>
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--cream)', fontWeight: '400', marginBottom: '40px', lineHeight: '1.2' }}>Datos de entrega</h1>
 
-          {[
-            { name: 'nombre', placeholder: 'Nombre completo *', type: 'text' },
-            { name: 'telefono', placeholder: 'Teléfono / WhatsApp *', type: 'tel' },
-            { name: 'direccion', placeholder: 'Dirección *', type: 'text' },
-            { name: 'piso', placeholder: 'Piso / Depto (opcional)', type: 'text' },
-          ].map(field => (
-            <input
-              key={field.name}
-              type={field.type}
-              name={field.name}
-              placeholder={field.placeholder}
-              value={form[field.name]}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          ))}
+          {/* Nombre */}
+          <input type="text" name="nombre" placeholder="Nombre completo *" value={form.nombre} onChange={handleChange} style={inputStyle('nombre')} />
+          {errores.nombre && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.nombre}</p>}
 
+          {/* Teléfono */}
+          <input
+            type="tel"
+            name="telefono"
+            placeholder="Teléfono / WhatsApp * (solo números)"
+            value={form.telefono}
+            onChange={handleChange}
+            maxLength={15}
+            inputMode="numeric"
+            style={inputStyle('telefono')}
+          />
+          {errores.telefono
+            ? <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.telefono}</p>
+            : <p style={{ color: 'rgba(247,243,236,0.35)', fontSize: '10px', marginBottom: '12px', fontWeight: '300' }}>Solo números, entre 8 y 15 dígitos</p>
+          }
+
+          {/* Dirección */}
+          <input type="text" name="direccion" placeholder="Dirección *" value={form.direccion} onChange={handleChange} style={inputStyle('direccion')} />
+          {errores.direccion && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.direccion}</p>}
+
+          {/* Localidad */}
+          <input type="text" name="localidad" placeholder="Localidad *" value={form.localidad} onChange={handleChange} style={inputStyle('localidad')} />
+          {errores.localidad && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.localidad}</p>}
+
+          {/* Piso */}
+          <input type="text" name="piso" placeholder="Piso / Depto (opcional)" value={form.piso} onChange={handleChange} style={inputStyle('piso')} />
+
+          {/* Comentarios */}
           <textarea
             name="comentarios"
             placeholder="Comentarios (opcional)"
             value={form.comentarios}
             onChange={handleChange}
             rows={3}
-            style={{ ...inputStyle, marginBottom: '28px', resize: 'vertical' }}
+            style={{ ...inputStyle('comentarios'), marginBottom: '28px', resize: 'vertical' }}
           />
 
           {/* Método de pago */}
@@ -192,8 +254,8 @@ export default function ConfirmarPage() {
                   }}
                 >
                   <p style={{ fontSize: '22px', marginBottom: '6px' }}>{op.emoji}</p>
-                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? 'var(--gold)' : 'var(--black)' }}>{op.label}</p>
-                  <p style={{ fontSize: '11px', fontWeight: '300', color: pagoMetodo === op.value ? 'rgba(247,243,236,0.6)' : '#999' }}>{op.desc}</p>
+                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? '#2ecc71' : 'var(--black)' }}>{op.label}</p>
+                  <p style={{ fontSize: '11px', fontWeight: '300', color: pagoMetodo === op.value ? 'rgba(255,255,255,0.6)' : '#999' }}>{op.desc}</p>
                 </button>
               ))}
             </div>
@@ -204,7 +266,7 @@ export default function ConfirmarPage() {
             )}
           </div>
 
-          {error && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px' }}>{error}</p>}
+          {errores.general && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px' }}>⚠ {errores.general}</p>}
 
           <button
             onClick={handleSubmit}
@@ -253,6 +315,7 @@ export default function ConfirmarPage() {
             </p>
           </div>
         </div>
+
       </div>
     </div>
   )
