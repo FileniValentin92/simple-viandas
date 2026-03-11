@@ -1,12 +1,30 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
 const CartContext = createContext()
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([])
   const [abierto, setAbierto] = useState(false)
+  const [cargado, setCargado] = useState(false)
+
+  // Cargar carrito desde localStorage al iniciar
+  useEffect(() => {
+    try {
+      const guardado = localStorage.getItem('carrito_simple')
+      if (guardado) setItems(JSON.parse(guardado))
+    } catch (e) {}
+    setCargado(true)
+  }, [])
+
+  // Guardar carrito en localStorage cada vez que cambia
+  useEffect(() => {
+    if (!cargado) return
+    try {
+      localStorage.setItem('carrito_simple', JSON.stringify(items))
+    } catch (e) {}
+  }, [items, cargado])
 
   const agregarItem = (plato, cantidad = 1) => {
     setItems(prev => {
@@ -18,7 +36,6 @@ export function CartProvider({ children }) {
       }
       return [...prev, { ...plato, cantidad }]
     })
-    // Ya no abre el carrito automáticamente
   }
 
   const quitarItem = (nombre) => {
@@ -33,7 +50,10 @@ export function CartProvider({ children }) {
     setItems(prev => prev.filter(i => i.nombre !== nombre))
   }
 
-  const vaciarCarrito = () => setItems([])
+  const vaciarCarrito = () => {
+    setItems([])
+    try { localStorage.removeItem('carrito_simple') } catch (e) {}
+  }
 
   const totalItems = items.reduce((acc, i) => acc + i.cantidad, 0)
 
