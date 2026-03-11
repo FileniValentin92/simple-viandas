@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useCart } from '../components/CartContext'
 import { supabase } from '../lib/supabaseClient'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 export default function ConfirmarPage() {
   const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
@@ -13,7 +12,6 @@ export default function ConfirmarPage() {
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -25,8 +23,7 @@ export default function ConfirmarPage() {
     setEnviando(true)
     setError('')
 
-    if (pagoMetodo === 'efectivo' || pagoMetodo === 'transferencia') {
-      // Guardar directo en Supabase
+    if (pagoMetodo === 'efectivo') {
       const { error: supaError } = await supabase.from('pedidos').insert([{
         nombre: form.nombre,
         telefono: form.telefono,
@@ -37,7 +34,7 @@ export default function ConfirmarPage() {
         total: totalPrecio,
         puntos: totalPuntos,
         estado: 'pendiente',
-        pago_metodo: pagoMetodo,
+        pago_metodo: 'efectivo',
         pago_estado: 'pendiente',
       }])
       setEnviando(false)
@@ -49,7 +46,6 @@ export default function ConfirmarPage() {
       }
 
     } else if (pagoMetodo === 'mercadopago') {
-      // Guardar datos en sessionStorage para recuperarlos después del pago
       sessionStorage.setItem('pedido_pendiente', JSON.stringify({
         nombre: form.nombre,
         telefono: form.telefono,
@@ -61,13 +57,12 @@ export default function ConfirmarPage() {
         puntos: totalPuntos,
       }))
 
-      // Crear preferencia en MP
       try {
         const res = await fetch('/api/mp-crear-preferencia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: items,
+            items,
             nombre: form.nombre,
             telefono: form.telefono,
             direccion: form.direccion,
@@ -100,7 +95,7 @@ export default function ConfirmarPage() {
             Nos comunicaremos a la brevedad para coordinar la entrega.
           </p>
           <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '300', marginBottom: '40px' }}>
-            Forma de pago: {pagoMetodo === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia'}
+            💵 Pagás en efectivo al recibir el pedido
           </p>
           <Link href="/menu" style={{ display: 'inline-block', background: 'var(--cream)', color: 'var(--black)', padding: '14px 32px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
             Seguir comprando
@@ -124,7 +119,7 @@ export default function ConfirmarPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--black)', fontFamily: 'Jost, sans-serif', padding: '60px 20px' }}>
-      <div className="confirmar-content" style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 400px', gap: '48px', alignItems: 'start' }}>
+      <div className="confirmar-content">
 
         {/* Formulario */}
         <div>
@@ -173,10 +168,9 @@ export default function ConfirmarPage() {
             <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px' }}>
               Forma de pago
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div className="pago-metodos-grid">
               {[
                 { value: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Al recibir el pedido' },
-                { value: 'transferencia', label: 'Transferencia', emoji: '🏦', desc: 'Te enviamos el CBU' },
                 { value: 'mercadopago', label: 'MercadoPago', emoji: '💳', desc: 'Pago online seguro' },
               ].map(op => (
                 <button
@@ -222,11 +216,7 @@ export default function ConfirmarPage() {
               transition: 'background 0.2s',
             }}
           >
-            {enviando
-              ? 'Procesando...'
-              : pagoMetodo === 'mercadopago'
-              ? '💳 Pagar con MercadoPago'
-              : 'Confirmar pedido'}
+            {enviando ? 'Procesando...' : pagoMetodo === 'mercadopago' ? '💳 Pagar con MercadoPago' : 'Confirmar pedido'}
           </button>
         </div>
 
@@ -253,15 +243,11 @@ export default function ConfirmarPage() {
           </div>
           <p style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '300', textAlign: 'right' }}>+{totalPuntos} puntos SIMPLE</p>
 
-          {pagoMetodo && (
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
-              <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.5)', fontWeight: '300' }}>
-                {pagoMetodo === 'efectivo' && '💵 Pagás en efectivo al recibir'}
-                {pagoMetodo === 'transferencia' && '🏦 Te enviamos los datos para transferir'}
-                {pagoMetodo === 'mercadopago' && '💳 Pago online — serás redirigido a MP'}
-              </p>
-            </div>
-          )}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
+            <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.5)', fontWeight: '300' }}>
+              {pagoMetodo === 'efectivo' ? '💵 Pagás en efectivo al recibir' : '💳 Pago online — serás redirigido a MP'}
+            </p>
+          </div>
         </div>
       </div>
     </div>

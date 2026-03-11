@@ -143,7 +143,6 @@ nav {
 
 /* ─── CONFIRMAR PAGE ─── */
 .confirmar-content {
-  background: var(--white);
   padding: 64px;
   display: grid;
   grid-template-columns: 1fr 420px;
@@ -157,6 +156,13 @@ nav {
     grid-template-columns: 1fr;
     gap: 32px;
   }
+}
+
+/* ─── MÉTODOS DE PAGO ─── */
+.pago-metodos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 /* ─── FOOTER ─── */
