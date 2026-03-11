@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useCart } from '../components/CartContext'
 import { supabase } from '../lib/supabaseClient'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function ConfirmarPage() {
   const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
@@ -12,6 +13,7 @@ export default function ConfirmarPage() {
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -22,25 +24,69 @@ export default function ConfirmarPage() {
     }
     setEnviando(true)
     setError('')
-    const { error: supaError } = await supabase.from('pedidos').insert([{
-      nombre: form.nombre,
-      telefono: form.telefono,
-      direccion: form.direccion,
-      piso: form.piso,
-      comentarios: form.comentarios,
-      items: items,
-      total: totalPrecio,
-      puntos: totalPuntos,
-      estado: 'pendiente',
-      pago_metodo: pagoMetodo,
-      pago_estado: 'pendiente',
-    }])
-    setEnviando(false)
-    if (supaError) {
-      setError('Hubo un error al enviar el pedido. Intentá de nuevo.')
-    } else {
-      vaciarCarrito()
-      setExito(true)
+
+    if (pagoMetodo === 'efectivo' || pagoMetodo === 'transferencia') {
+      // Guardar directo en Supabase
+      const { error: supaError } = await supabase.from('pedidos').insert([{
+        nombre: form.nombre,
+        telefono: form.telefono,
+        direccion: form.direccion,
+        piso: form.piso,
+        comentarios: form.comentarios,
+        items: items,
+        total: totalPrecio,
+        puntos: totalPuntos,
+        estado: 'pendiente',
+        pago_metodo: pagoMetodo,
+        pago_estado: 'pendiente',
+      }])
+      setEnviando(false)
+      if (supaError) {
+        setError('Hubo un error al enviar el pedido. Intentá de nuevo.')
+      } else {
+        vaciarCarrito()
+        setExito(true)
+      }
+
+    } else if (pagoMetodo === 'mercadopago') {
+      // Guardar datos en sessionStorage para recuperarlos después del pago
+      sessionStorage.setItem('pedido_pendiente', JSON.stringify({
+        nombre: form.nombre,
+        telefono: form.telefono,
+        direccion: form.direccion,
+        piso: form.piso,
+        comentarios: form.comentarios,
+        items: items,
+        total: totalPrecio,
+        puntos: totalPuntos,
+      }))
+
+      // Crear preferencia en MP
+      try {
+        const res = await fetch('/api/mp-crear-preferencia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: items,
+            nombre: form.nombre,
+            telefono: form.telefono,
+            direccion: form.direccion,
+            piso: form.piso,
+            comentarios: form.comentarios,
+          }),
+        })
+        const data = await res.json()
+        if (data.init_point) {
+          vaciarCarrito()
+          window.location.href = data.init_point
+        } else {
+          setError('Error al conectar con MercadoPago. Intentá de nuevo.')
+          setEnviando(false)
+        }
+      } catch (e) {
+        setError('Error al conectar con MercadoPago. Intentá de nuevo.')
+        setEnviando(false)
+      }
     }
   }
 
@@ -127,10 +173,11 @@ export default function ConfirmarPage() {
             <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px' }}>
               Forma de pago
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
               {[
-                { value: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Al momento de la entrega' },
-                { value: 'transferencia', label: 'Transferencia', emoji: '🏦', desc: 'Te enviamos el CBU/alias' },
+                { value: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Al recibir el pedido' },
+                { value: 'transferencia', label: 'Transferencia', emoji: '🏦', desc: 'Te enviamos el CBU' },
+                { value: 'mercadopago', label: 'MercadoPago', emoji: '💳', desc: 'Pago online seguro' },
               ].map(op => (
                 <button
                   key={op.value}
@@ -152,6 +199,11 @@ export default function ConfirmarPage() {
                 </button>
               ))}
             </div>
+            {pagoMetodo === 'mercadopago' && (
+              <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.5)', marginTop: '12px', fontWeight: '300' }}>
+                💳 Vas a ser redirigido a MercadoPago para completar el pago de forma segura.
+              </p>
+            )}
           </div>
 
           {error && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px' }}>{error}</p>}
@@ -160,14 +212,21 @@ export default function ConfirmarPage() {
             onClick={handleSubmit}
             disabled={enviando}
             style={{
-              width: '100%', background: enviando ? 'rgba(247,243,236,0.4)' : 'var(--cream)',
-              color: 'var(--black)', border: 'none', padding: '16px',
+              width: '100%',
+              background: enviando ? 'rgba(247,243,236,0.4)' : pagoMetodo === 'mercadopago' ? '#009ee3' : 'var(--cream)',
+              color: pagoMetodo === 'mercadopago' ? '#fff' : 'var(--black)',
+              border: 'none', padding: '16px',
               fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase',
               fontFamily: 'Jost, sans-serif', fontWeight: '400',
               cursor: enviando ? 'not-allowed' : 'pointer',
+              transition: 'background 0.2s',
             }}
           >
-            {enviando ? 'Enviando...' : 'Confirmar pedido'}
+            {enviando
+              ? 'Procesando...'
+              : pagoMetodo === 'mercadopago'
+              ? '💳 Pagar con MercadoPago'
+              : 'Confirmar pedido'}
           </button>
         </div>
 
@@ -197,7 +256,9 @@ export default function ConfirmarPage() {
           {pagoMetodo && (
             <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
               <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.5)', fontWeight: '300' }}>
-                {pagoMetodo === 'efectivo' ? '💵 Pagás en efectivo al recibir' : '🏦 Te enviamos los datos para transferir'}
+                {pagoMetodo === 'efectivo' && '💵 Pagás en efectivo al recibir'}
+                {pagoMetodo === 'transferencia' && '🏦 Te enviamos los datos para transferir'}
+                {pagoMetodo === 'mercadopago' && '💳 Pago online — serás redirigido a MP'}
               </p>
             </div>
           )}
