@@ -1,294 +1,208 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
 import { useCart } from '../components/CartContext'
 import { supabase } from '../lib/supabaseClient'
+import Link from 'next/link'
 
 export default function ConfirmarPage() {
-  const { items, totalPrecio, totalPuntos, totalItems, vaciarCarrito } = useCart()
-  const router = useRouter()
-
-  const [form, setForm] = useState({
-    nombre: '',
-    telefono: '',
-    direccion: '',
-    piso: '',
-    comentarios: '',
-  })
-
-  const [enviado, setEnviado] = useState(false)
-  const [cargando, setCargando] = useState(false)
+  const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
+  const [form, setForm] = useState({ nombre: '', telefono: '', direccion: '', piso: '', comentarios: '' })
+  const [pagoMetodo, setPagoMetodo] = useState('efectivo')
+  const [enviando, setEnviando] = useState(false)
+  const [exito, setExito] = useState(false)
   const [error, setError] = useState('')
 
-  const formatPrecio = (n) => '$' + n.toLocaleString('es-AR')
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
-
-  const handleConfirmar = async () => {
-    if (!form.nombre.trim() || !form.telefono.trim() || !form.direccion.trim()) {
+  const handleSubmit = async () => {
+    if (!form.nombre || !form.telefono || !form.direccion) {
       setError('Por favor completá nombre, teléfono y dirección.')
       return
     }
-
+    setEnviando(true)
     setError('')
-    setCargando(true)
-
-    try {
-      const { error: supabaseError } = await supabase
-        .from('pedidos')
-        .insert([{
-          nombre: form.nombre.trim(),
-          telefono: form.telefono.trim(),
-          direccion: form.direccion.trim(),
-          piso: form.piso.trim() || null,
-          comentarios: form.comentarios.trim() || null,
-          items: items.map(i => ({
-            nombre: i.nombre,
-            emoji: i.emoji,
-            cantidad: i.cantidad,
-            precio: i.precio,
-          })),
-          total: totalPrecio,
-          puntos: totalPuntos,
-          estado: 'pendiente',
-        }])
-
-      if (supabaseError) throw supabaseError
-
-      setEnviado(true)
+    const { error: supaError } = await supabase.from('pedidos').insert([{
+      nombre: form.nombre,
+      telefono: form.telefono,
+      direccion: form.direccion,
+      piso: form.piso,
+      comentarios: form.comentarios,
+      items: items,
+      total: totalPrecio,
+      puntos: totalPuntos,
+      estado: 'pendiente',
+      pago_metodo: pagoMetodo,
+      pago_estado: 'pendiente',
+    }])
+    setEnviando(false)
+    if (supaError) {
+      setError('Hubo un error al enviar el pedido. Intentá de nuevo.')
+    } else {
       vaciarCarrito()
-    } catch (err) {
-      console.error('Error al guardar pedido:', err)
-      setError('Hubo un problema al enviar el pedido. Intentá de nuevo.')
-    } finally {
-      setCargando(false)
+      setExito(true)
     }
   }
 
-  // Pantalla de éxito
-  if (enviado) {
+  if (exito) {
     return (
-      <main>
-        <Navbar />
-        <section style={{
-          minHeight: '70vh',
-          background: 'var(--white)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px 20px',
-          textAlign: 'center',
-          gap: '24px',
-        }}>
-          <div style={{ width: '80px', height: '80px', background: 'var(--cream)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px' }}>
-            ✓
-          </div>
-          <div>
-            <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '12px' }}>
-              Pedido recibido
-            </p>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>
-              ¡Gracias, {form.nombre.split(' ')[0]}!
-            </h1>
-            <p style={{ fontSize: '14px', color: '#888', fontWeight: '300', maxWidth: '400px', lineHeight: '1.8' }}>
-              Tu pedido fue registrado. Nos pondremos en contacto por WhatsApp al <strong>{form.telefono}</strong> para coordinar la entrega.
-            </p>
-          </div>
-          <div style={{ background: 'var(--cream)', padding: '20px 40px' }}>
-            <p style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>
-              Puntos acreditados: <strong>+{totalPuntos > 0 ? totalPuntos : '—'} pts</strong>
-            </p>
-          </div>
-          <button onClick={() => router.push('/menu')} style={{
-            background: 'var(--black)',
-            color: 'var(--cream)',
-            border: 'none',
-            padding: '16px 48px',
-            fontSize: '10px',
-            letterSpacing: '3px',
-            textTransform: 'uppercase',
-            fontFamily: 'Jost, sans-serif',
-            fontWeight: '300',
-            cursor: 'pointer',
-          }}>
-            Volver al menú
-          </button>
-        </section>
-        <Footer />
-      </main>
+      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif', padding: '40px 20px' }}>
+        <div style={{ textAlign: 'center', maxWidth: '480px' }}>
+          <p style={{ fontSize: '48px', marginBottom: '24px' }}>✓</p>
+          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--cream)', fontWeight: '400', marginBottom: '16px' }}>¡Pedido recibido!</h1>
+          <p style={{ fontSize: '14px', color: 'var(--cream-mid)', fontWeight: '300', lineHeight: '1.7', marginBottom: '8px' }}>
+            Nos comunicaremos a la brevedad para coordinar la entrega.
+          </p>
+          <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '300', marginBottom: '40px' }}>
+            Forma de pago: {pagoMetodo === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia'}
+          </p>
+          <Link href="/menu" style={{ display: 'inline-block', background: 'var(--cream)', color: 'var(--black)', padding: '14px 32px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
+            Seguir comprando
+          </Link>
+        </div>
+      </div>
     )
   }
 
-  // Carrito vacío
   if (items.length === 0) {
     return (
-      <main>
-        <Navbar />
-        <section style={{ minHeight: '60vh', background: 'var(--white)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', textAlign: 'center', padding: '40px 20px' }}>
-          <span style={{ fontSize: '48px' }}>🍽️</span>
-          <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)', fontWeight: '400' }}>Tu carrito está vacío</p>
-          <button onClick={() => router.push('/menu')} style={{ background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '14px 40px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer' }}>
-            Ver el menú
-          </button>
-        </section>
-        <Footer />
-      </main>
+      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</p>
+          <p style={{ color: 'var(--cream)', fontSize: '18px', marginBottom: '32px' }}>Tu carrito está vacío</p>
+          <Link href="/menu" style={{ color: 'var(--gold)', fontSize: '12px', letterSpacing: '3px', textTransform: 'uppercase', textDecoration: 'none' }}>Ver menú →</Link>
+        </div>
+      </div>
     )
   }
 
   return (
-    <main>
-      <Navbar />
-
-      {/* Header */}
-      <section style={{ background: 'var(--black)', padding: '40px 24px' }}>
-        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '10px' }}>
-          Último paso
-        </p>
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--cream)', fontWeight: '400' }}>
-          Confirmá tu pedido
-        </h1>
-      </section>
-
-      {/* Contenido */}
-      <section className="confirmar-content">
+    <div style={{ minHeight: '100vh', background: 'var(--black)', fontFamily: 'Jost, sans-serif', padding: '60px 20px' }}>
+      <div className="confirmar-content" style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 400px', gap: '48px', alignItems: 'start' }}>
 
         {/* Formulario */}
         <div>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)', fontWeight: '400', marginBottom: '32px' }}>
-            Datos de entrega
-          </h2>
+          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '8px' }}>Confirmar pedido</p>
+          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--cream)', fontWeight: '400', marginBottom: '40px', lineHeight: '1.2' }}>Datos de entrega</h1>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label style={labelStyle}>Nombre completo *</label>
-              <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej: María García" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>WhatsApp / Teléfono *</label>
-              <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Ej: 11 5555-1234" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Dirección *</label>
-              <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Ej: Av. Corrientes 1234, CABA" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Piso / Depto (opcional)</label>
-              <input name="piso" value={form.piso} onChange={handleChange} placeholder="Ej: 3° B" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Comentarios (opcional)</label>
-              <textarea name="comentarios" value={form.comentarios} onChange={handleChange} placeholder="Ej: Sin cebolla, timbre roto..." rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.6' }} />
+          {[
+            { name: 'nombre', placeholder: 'Nombre completo *', type: 'text' },
+            { name: 'telefono', placeholder: 'Teléfono / WhatsApp *', type: 'tel' },
+            { name: 'direccion', placeholder: 'Dirección *', type: 'text' },
+            { name: 'piso', placeholder: 'Piso / Depto (opcional)', type: 'text' },
+          ].map(field => (
+            <input
+              key={field.name}
+              type={field.type}
+              name={field.name}
+              placeholder={field.placeholder}
+              value={form[field.name]}
+              onChange={handleChange}
+              style={{
+                display: 'block', width: '100%', background: 'rgba(247,243,236,0.06)',
+                border: '1px solid rgba(247,243,236,0.15)', color: 'var(--cream)',
+                padding: '14px 16px', fontSize: '14px', fontFamily: 'Jost, sans-serif',
+                fontWeight: '300', outline: 'none', marginBottom: '12px', boxSizing: 'border-box',
+              }}
+            />
+          ))}
+
+          <textarea
+            name="comentarios"
+            placeholder="Comentarios (opcional)"
+            value={form.comentarios}
+            onChange={handleChange}
+            rows={3}
+            style={{
+              display: 'block', width: '100%', background: 'rgba(247,243,236,0.06)',
+              border: '1px solid rgba(247,243,236,0.15)', color: 'var(--cream)',
+              padding: '14px 16px', fontSize: '14px', fontFamily: 'Jost, sans-serif',
+              fontWeight: '300', outline: 'none', marginBottom: '28px',
+              resize: 'vertical', boxSizing: 'border-box',
+            }}
+          />
+
+          {/* Método de pago */}
+          <div style={{ marginBottom: '32px' }}>
+            <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px' }}>
+              Forma de pago
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {[
+                { value: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Al momento de la entrega' },
+                { value: 'transferencia', label: 'Transferencia', emoji: '🏦', desc: 'Te enviamos el CBU/alias' },
+              ].map(op => (
+                <button
+                  key={op.value}
+                  onClick={() => setPagoMetodo(op.value)}
+                  style={{
+                    background: pagoMetodo === op.value ? 'rgba(184,154,94,0.15)' : 'rgba(247,243,236,0.04)',
+                    border: pagoMetodo === op.value ? '1px solid var(--gold)' : '1px solid rgba(247,243,236,0.15)',
+                    color: 'var(--cream)',
+                    padding: '16px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'Jost, sans-serif',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <p style={{ fontSize: '22px', marginBottom: '6px' }}>{op.emoji}</p>
+                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? 'var(--gold)' : 'var(--cream)' }}>{op.label}</p>
+                  <p style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(247,243,236,0.5)' }}>{op.desc}</p>
+                </button>
+              ))}
             </div>
           </div>
 
-          {error && (
-            <p style={{ marginTop: '16px', fontSize: '11px', color: '#c0392b', letterSpacing: '1px', fontWeight: '300' }}>
-              ⚠ {error}
-            </p>
-          )}
+          {error && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px' }}>{error}</p>}
+
+          <button
+            onClick={handleSubmit}
+            disabled={enviando}
+            style={{
+              width: '100%', background: enviando ? 'rgba(247,243,236,0.4)' : 'var(--cream)',
+              color: 'var(--black)', border: 'none', padding: '16px',
+              fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase',
+              fontFamily: 'Jost, sans-serif', fontWeight: '400',
+              cursor: enviando ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {enviando ? 'Enviando...' : 'Confirmar pedido'}
+          </button>
         </div>
 
         {/* Resumen */}
-        <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--cream)' }}>
-          <div style={{ background: 'var(--black)', padding: '20px 24px' }}>
-            <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '4px' }}>
-              Tu pedido
-            </p>
-            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--cream)', fontWeight: '400' }}>
-              {totalItems} {totalItems === 1 ? 'plato' : 'platos'}
-            </p>
-          </div>
+        <div style={{ background: 'rgba(247,243,236,0.05)', border: '1px solid rgba(247,243,236,0.1)', padding: '28px', position: 'sticky', top: '20px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '20px' }}>Tu pedido</p>
 
-          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {items.map((item) => (
-              <div key={item.nombre} style={{ display: 'flex', gap: '12px', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--cream-deep)' }}>
-                <div style={{ width: '44px', height: '44px', background: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>
-                  {item.emoji}
+          {items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid rgba(247,243,236,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>{item.emoji}</span>
+                <div>
+                  <p style={{ fontSize: '13px', color: 'var(--cream)', fontWeight: '300' }}>{item.nombre}</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.4)' }}>x{item.cantidad}</p>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '14px', color: 'var(--black)', fontWeight: '400', marginBottom: '2px' }}>
-                    {item.nombre}
-                  </p>
-                  <p style={{ fontSize: '10px', color: '#999', fontWeight: '300' }}>x{item.cantidad}</p>
-                </div>
-                <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '15px', color: 'var(--black)', flexShrink: 0 }}>
-                  {item.precio}
-                </span>
               </div>
-            ))}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
-              <span style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive-mid)', fontWeight: '300' }}>Puntos a ganar</span>
-              <span style={{ fontSize: '12px', color: 'var(--olive)', fontWeight: '400' }}>+{totalPuntos} pts</span>
+              <span style={{ fontSize: '13px', color: 'var(--cream-mid)' }}>{item.precio}</span>
             </div>
+          ))}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--cream-deep)', paddingTop: '16px', marginTop: '4px' }}>
-              <span style={{ fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300' }}>Total</span>
-              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--black)' }}>
-                {formatPrecio(totalPrecio)}
-              </span>
-            </div>
-
-            <button
-              onClick={handleConfirmar}
-              disabled={cargando}
-              style={{
-                width: '100%',
-                background: cargando ? 'var(--olive-mid)' : 'var(--black)',
-                color: 'var(--cream)',
-                border: 'none',
-                padding: '18px',
-                fontSize: '10px',
-                letterSpacing: '3px',
-                textTransform: 'uppercase',
-                fontFamily: 'Jost, sans-serif',
-                fontWeight: '300',
-                cursor: cargando ? 'not-allowed' : 'pointer',
-                marginTop: '8px',
-                transition: 'background 0.2s ease',
-              }}
-            >
-              {cargando ? 'Enviando...' : 'Hacer pedido'}
-            </button>
-
-            <p style={{ fontSize: '9px', color: '#bbb', textAlign: 'center', fontWeight: '300', letterSpacing: '1px' }}>
-              Te contactamos por WhatsApp para coordinar
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(247,243,236,0.5)' }}>Total</span>
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--cream)' }}>${totalPrecio.toLocaleString('es-AR')}</span>
           </div>
+          <p style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '300', textAlign: 'right' }}>+{totalPuntos} puntos SIMPLE</p>
+
+          {pagoMetodo && (
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
+              <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.5)', fontWeight: '300' }}>
+                {pagoMetodo === 'efectivo' ? '💵 Pagás en efectivo al recibir' : '🏦 Te enviamos los datos para transferir'}
+              </p>
+            </div>
+          )}
         </div>
-      </section>
-
-      <Footer />
-    </main>
+      </div>
+    </div>
   )
-}
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '9px',
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: 'var(--black)',
-  fontWeight: '300',
-  marginBottom: '8px',
-  fontFamily: 'Jost, sans-serif',
-}
-
-const inputStyle = {
-  width: '100%',
-  border: '1px solid var(--cream-deep)',
-  background: 'var(--white)',
-  padding: '14px 16px',
-  fontSize: '14px',
-  fontFamily: 'Jost, sans-serif',
-  fontWeight: '300',
-  color: 'var(--black)',
-  outline: 'none',
 }
