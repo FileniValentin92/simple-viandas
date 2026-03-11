@@ -92,7 +92,6 @@ export default function ConfirmarPage() {
         })
         const data = await res.json()
         if (data.init_point) {
-          vaciarCarrito()
           setEnviando(false)
           setRedirigiendo(true)
           setTimeout(() => {
