@@ -181,9 +181,9 @@ export default function ConfirmarPage() {
                   key={op.value}
                   onClick={() => setPagoMetodo(op.value)}
                   style={{
-                    background: pagoMetodo === op.value ? 'var(--black)' : '#fff',
-                    border: pagoMetodo === op.value ? '2px solid var(--gold)' : '2px solid #E0E0E0',
-                    color: pagoMetodo === op.value ? 'var(--cream)' : 'var(--black)',
+                    background: pagoMetodo === op.value ? '#1a3a2a' : '#fff',
+                    border: pagoMetodo === op.value ? '2px solid #2ecc71' : '2px solid #E0E0E0',
+                    color: pagoMetodo === op.value ? '#fff' : 'var(--black)',
                     padding: '16px',
                     cursor: 'pointer',
                     textAlign: 'left',
