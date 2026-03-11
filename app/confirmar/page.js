@@ -117,6 +117,21 @@ export default function ConfirmarPage() {
     )
   }
 
+  const inputStyle = {
+    display: 'block',
+    width: '100%',
+    background: '#fff',
+    border: '1px solid #E0E0E0',
+    color: 'var(--black)',
+    padding: '14px 16px',
+    fontSize: '14px',
+    fontFamily: 'Jost, sans-serif',
+    fontWeight: '300',
+    outline: 'none',
+    marginBottom: '12px',
+    boxSizing: 'border-box',
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--black)', fontFamily: 'Jost, sans-serif', padding: '60px 20px' }}>
       <div className="confirmar-content">
@@ -139,12 +154,7 @@ export default function ConfirmarPage() {
               placeholder={field.placeholder}
               value={form[field.name]}
               onChange={handleChange}
-              style={{
-                display: 'block', width: '100%', background: 'rgba(247,243,236,0.06)',
-                border: '1px solid rgba(247,243,236,0.15)', color: 'var(--cream)',
-                padding: '14px 16px', fontSize: '14px', fontFamily: 'Jost, sans-serif',
-                fontWeight: '300', outline: 'none', marginBottom: '12px', boxSizing: 'border-box',
-              }}
+              style={inputStyle}
             />
           ))}
 
@@ -154,13 +164,7 @@ export default function ConfirmarPage() {
             value={form.comentarios}
             onChange={handleChange}
             rows={3}
-            style={{
-              display: 'block', width: '100%', background: 'rgba(247,243,236,0.06)',
-              border: '1px solid rgba(247,243,236,0.15)', color: 'var(--cream)',
-              padding: '14px 16px', fontSize: '14px', fontFamily: 'Jost, sans-serif',
-              fontWeight: '300', outline: 'none', marginBottom: '28px',
-              resize: 'vertical', boxSizing: 'border-box',
-            }}
+            style={{ ...inputStyle, marginBottom: '28px', resize: 'vertical' }}
           />
 
           {/* Método de pago */}
@@ -177,9 +181,9 @@ export default function ConfirmarPage() {
                   key={op.value}
                   onClick={() => setPagoMetodo(op.value)}
                   style={{
-                    background: pagoMetodo === op.value ? 'rgba(184,154,94,0.15)' : 'rgba(247,243,236,0.04)',
-                    border: pagoMetodo === op.value ? '1px solid var(--gold)' : '1px solid rgba(247,243,236,0.15)',
-                    color: 'var(--cream)',
+                    background: pagoMetodo === op.value ? 'var(--black)' : '#fff',
+                    border: pagoMetodo === op.value ? '2px solid var(--gold)' : '2px solid #E0E0E0',
+                    color: pagoMetodo === op.value ? 'var(--cream)' : 'var(--black)',
                     padding: '16px',
                     cursor: 'pointer',
                     textAlign: 'left',
@@ -188,8 +192,8 @@ export default function ConfirmarPage() {
                   }}
                 >
                   <p style={{ fontSize: '22px', marginBottom: '6px' }}>{op.emoji}</p>
-                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? 'var(--gold)' : 'var(--cream)' }}>{op.label}</p>
-                  <p style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(247,243,236,0.5)' }}>{op.desc}</p>
+                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? 'var(--gold)' : 'var(--black)' }}>{op.label}</p>
+                  <p style={{ fontSize: '11px', fontWeight: '300', color: pagoMetodo === op.value ? 'rgba(247,243,236,0.6)' : '#999' }}>{op.desc}</p>
                 </button>
               ))}
             </div>
@@ -207,7 +211,7 @@ export default function ConfirmarPage() {
             disabled={enviando}
             style={{
               width: '100%',
-              background: enviando ? 'rgba(247,243,236,0.4)' : pagoMetodo === 'mercadopago' ? '#009ee3' : 'var(--cream)',
+              background: enviando ? '#ccc' : pagoMetodo === 'mercadopago' ? '#009ee3' : 'var(--cream)',
               color: pagoMetodo === 'mercadopago' ? '#fff' : 'var(--black)',
               border: 'none', padding: '16px',
               fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase',
@@ -221,30 +225,30 @@ export default function ConfirmarPage() {
         </div>
 
         {/* Resumen */}
-        <div style={{ background: 'rgba(247,243,236,0.05)', border: '1px solid rgba(247,243,236,0.1)', padding: '28px', position: 'sticky', top: '20px' }}>
-          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '20px' }}>Tu pedido</p>
+        <div style={{ background: '#fff', border: '1px solid #E0E0E0', padding: '28px', position: 'sticky', top: '20px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300', marginBottom: '20px' }}>Tu pedido</p>
 
           {items.map((item, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid rgba(247,243,236,0.08)' }}>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid #F0F0F0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '20px' }}>{item.emoji}</span>
                 <div>
-                  <p style={{ fontSize: '13px', color: 'var(--cream)', fontWeight: '300' }}>{item.nombre}</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.4)' }}>x{item.cantidad}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300' }}>{item.nombre}</p>
+                  <p style={{ fontSize: '11px', color: '#999' }}>x{item.cantidad}</p>
                 </div>
               </div>
-              <span style={{ fontSize: '13px', color: 'var(--cream-mid)' }}>{item.precio}</span>
+              <span style={{ fontSize: '13px', color: 'var(--black)' }}>{item.precio}</span>
             </div>
           ))}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(247,243,236,0.5)' }}>Total</span>
-            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--cream)' }}>${totalPrecio.toLocaleString('es-AR')}</span>
+            <span style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999' }}>Total</span>
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>${totalPrecio.toLocaleString('es-AR')}</span>
           </div>
           <p style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '300', textAlign: 'right' }}>+{totalPuntos} puntos SIMPLE</p>
 
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
-            <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.5)', fontWeight: '300' }}>
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0F0F0' }}>
+            <p style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>
               {pagoMetodo === 'efectivo' ? '💵 Pagás en efectivo al recibir' : '💳 Pago online — serás redirigido a MP'}
             </p>
           </div>
