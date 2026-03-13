@@ -30,7 +30,10 @@ export default function LoginPage() {
   }
 
   const handleRegistro = async () => {
-    if (!form.nombre || !form.email || !form.password) { setError('Completá nombre, email y contraseña'); return }
+    if (!form.nombre || !form.email || !form.password || !form.telefono) {
+      setError('Completá todos los campos obligatorios')
+      return
+    }
     if (form.password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return }
     setCargando(true)
 
@@ -41,7 +44,7 @@ export default function LoginPage() {
       id: data.user.id,
       email: form.email,
       nombre: form.nombre,
-      telefono: form.telefono || null,
+      telefono: form.telefono,
       puntos: 0,
     }])
 
@@ -91,7 +94,7 @@ export default function LoginPage() {
           <input type="email" name="email" placeholder="Email *" value={form.email} onChange={handleChange} style={inputStyle} />
           <input type="password" name="password" placeholder={modo === 'registro' ? 'Contraseña * (mínimo 6 caracteres)' : 'Contraseña *'} value={form.password} onChange={handleChange} style={inputStyle} />
           {modo === 'registro' && (
-            <input type="tel" name="telefono" placeholder="Teléfono / WhatsApp (opcional)" value={form.telefono} onChange={handleChange} style={{ ...inputStyle, marginBottom: '24px' }} />
+            <input type="tel" name="telefono" placeholder="Teléfono / WhatsApp *" value={form.telefono} onChange={handleChange} style={{ ...inputStyle, marginBottom: '24px' }} />
           )}
 
           {error && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px', fontWeight: '300' }}>⚠ {error}</p>}
