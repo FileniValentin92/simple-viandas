@@ -1,98 +1,118 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useCart } from '../components/CartContext'
+import { useAuth } from '../components/AuthContext'
+import { supabase } from '../lib/supabaseClient'
 
 const PUNTOS_PARA_CANJE = 300
 
 const niveles = [
-  { nombre: 'Básico', desde: 0, hasta: 299, color: '#999' },
-  { nombre: 'Regular', desde: 300, hasta: 799, color: '#B89A5E' },
-  { nombre: 'Frecuente', desde: 800, hasta: 1999, color: '#636E43' },
-  { nombre: 'VIP', desde: 2000, hasta: Infinity, color: '#0E0E0C' },
+  { nombre: 'Básico',    desde: 0,    hasta: 299,      color: '#999' },
+  { nombre: 'Regular',   desde: 300,  hasta: 799,      color: '#B89A5E' },
+  { nombre: 'Frecuente', desde: 800,  hasta: 1999,     color: '#636E43' },
+  { nombre: 'VIP',       desde: 2000, hasta: Infinity,  color: '#0E0E0C' },
 ]
 
-// Platos con datos completos para poder agregarlos al carrito
 const catalogoPlatos = {
-  'Milanesa napolitana': { emoji: '🍖', precio: '$8.900', puntos: '+45 pts' },
-  'Pollo al limón':      { emoji: '🍗', precio: '$8.500', puntos: '+43 pts' },
-  'Carne al verdeo':     { emoji: '🥩', precio: '$9.200', puntos: '+46 pts' },
-  'Tuco de carne':       { emoji: '🫕', precio: '$8.200', puntos: '+41 pts' },
-  'Pollo al verdeo':     { emoji: '🍗', precio: '$8.300', puntos: '+42 pts' },
-  'Suprema a la maryland': { emoji: '🍗', precio: '$8.600', puntos: '+43 pts' },
-  'Tarta de verdura':    { emoji: '🥦', precio: '$7.800', puntos: '+39 pts' },
-  'Tortilla de papas':   { emoji: '🍳', precio: '$7.500', puntos: '+38 pts' },
-  'Guiso de lentejas':   { emoji: '🫘', precio: '$7.900', puntos: '+40 pts' },
-  'Ñoquis con salsa rosa': { emoji: '🍝', precio: '$8.100', puntos: '+41 pts' },
-  'Fideos con tuco':     { emoji: '🍝', precio: '$7.900', puntos: '+40 pts' },
-  'Lasagna de carne':    { emoji: '🍝', precio: '$9.100', puntos: '+46 pts' },
-  'Merluza al vapor':    { emoji: '🐟', precio: '$9.500', puntos: '+48 pts' },
-  'Salmon con limón':    { emoji: '🐟', precio: '$10.200', puntos: '+51 pts' },
-  'Cazuela de mariscos': { emoji: '🥘', precio: '$10.500', puntos: '+53 pts' },
+  'Milanesa napolitana':   { emoji: '🍖', precio: '$8.900', precioNum: 8900, puntos: '+45 pts' },
+  'Carne al verdeo':       { emoji: '🥩', precio: '$9.200', precioNum: 9200, puntos: '+46 pts' },
+  'Tuco de carne':         { emoji: '🫕', precio: '$8.200', precioNum: 8200, puntos: '+41 pts' },
+  'Pollo al limón':        { emoji: '🍗', precio: '$8.500', precioNum: 8500, puntos: '+43 pts' },
+  'Pollo al verdeo':       { emoji: '🍗', precio: '$8.300', precioNum: 8300, puntos: '+42 pts' },
+  'Suprema a la maryland': { emoji: '🍗', precio: '$8.600', precioNum: 8600, puntos: '+43 pts' },
+  'Tarta de verdura':      { emoji: '🥦', precio: '$7.800', precioNum: 7800, puntos: '+39 pts' },
+  'Tortilla de papas':     { emoji: '🍳', precio: '$7.500', precioNum: 7500, puntos: '+38 pts' },
+  'Guiso de lentejas':     { emoji: '🫘', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
+  'Ñoquis con salsa rosa': { emoji: '🍝', precio: '$8.100', precioNum: 8100, puntos: '+41 pts' },
+  'Fideos con tuco':       { emoji: '🍝', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
+  'Lasagna de carne':      { emoji: '🍝', precio: '$9.100', precioNum: 9100, puntos: '+46 pts' },
+  'Merluza al vapor':      { emoji: '🐟', precio: '$9.500', precioNum: 9500, puntos: '+48 pts' },
+  'Salmon con limón':      { emoji: '🐟', precio: '$10.200', precioNum: 10200, puntos: '+51 pts' },
+  'Cazuela de mariscos':   { emoji: '🥘', precio: '$10.500', precioNum: 10500, puntos: '+53 pts' },
 }
 
-// Pedidos con items estructurados { nombre, cantidad }
-const pedidosEjemplo = [
-  {
-    id: '#0012',
-    fecha: '28 Feb 2026',
-    items: [
-      { nombre: 'Milanesa napolitana', cantidad: 2 },
-      { nombre: 'Pollo al limón', cantidad: 1 },
-    ],
-    total: '$27.300',
-    puntos: '+135 pts',
-    estado: 'Entregado',
-  },
-  {
-    id: '#0011',
-    fecha: '21 Feb 2026',
-    items: [
-      { nombre: 'Lasagna de carne', cantidad: 1 },
-      { nombre: 'Ñoquis con salsa rosa', cantidad: 2 },
-    ],
-    total: '$25.300',
-    puntos: '+128 pts',
-    estado: 'Entregado',
-  },
-  {
-    id: '#0010',
-    fecha: '14 Feb 2026',
-    items: [
-      { nombre: 'Salmon con limón', cantidad: 1 },
-      { nombre: 'Cazuela de mariscos', cantidad: 1 },
-    ],
-    total: '$20.700',
-    puntos: '+104 pts',
-    estado: 'Entregado',
-  },
-]
+const estadoColor = {
+  pendiente:   { bg: 'rgba(184,154,94,0.1)',  color: '#B89A5E' },
+  preparando:  { bg: 'rgba(99,110,67,0.1)',   color: '#636E43' },
+  enviado:     { bg: 'rgba(0,158,227,0.1)',   color: '#009ee3' },
+  entregado:   { bg: 'rgba(46,204,113,0.1)',  color: '#2ecc71' },
+  cancelado:   { bg: 'rgba(231,76,60,0.1)',   color: '#e74c3c' },
+}
 
 export default function PerfilPage() {
-  const { totalPuntos, agregarItem, setAbierto } = useCart()
+  const router = useRouter()
+  const { agregarItem, setAbierto } = useCart()
+  const { user, perfil, cargando: cargandoAuth } = useAuth()
+
+  const [pedidos, setPedidos] = useState([])
+  const [cargandoPedidos, setCargandoPedidos] = useState(false)
   const [repetidoId, setRepetidoId] = useState(null)
 
-  const [puntosAcumulados] = useState(680)
-  const puntosTotal = puntosAcumulados + totalPuntos
+  // Redirigir si no hay sesión
+  useEffect(() => {
+    if (!cargandoAuth && !user) {
+      router.push('/login')
+    }
+  }, [user, cargandoAuth, router])
 
-  const nivelActual = niveles.find(n => puntosTotal >= n.desde && puntosTotal <= n.hasta) || niveles[0]
-  const puntosRestantes = PUNTOS_PARA_CANJE - (puntosTotal % PUNTOS_PARA_CANJE)
-  const progresoPorc = ((puntosTotal % PUNTOS_PARA_CANJE) / PUNTOS_PARA_CANJE) * 100
-  const canjesDisponibles = Math.floor(puntosTotal / PUNTOS_PARA_CANJE)
+  // Cargar pedidos reales desde Supabase
+  useEffect(() => {
+    if (!user || !perfil) return
+    const cargarPedidos = async () => {
+      setCargandoPedidos(true)
+      // Buscar por user_id O por teléfono/email
+      const { data } = await supabase
+        .from('pedidos')
+        .select('*')
+        .or(`user_id.eq.${user.id},telefono.eq.${perfil.telefono || 'NULO'}`)
+        .order('created_at', { ascending: false })
+      setPedidos(data || [])
+      setCargandoPedidos(false)
+    }
+    cargarPedidos()
+  }, [user, perfil])
+
+  const puntosAcumulados = perfil?.puntos || 0
+  const nivelActual = niveles.find(n => puntosAcumulados >= n.desde && puntosAcumulados <= n.hasta) || niveles[0]
+  const puntosRestantes = PUNTOS_PARA_CANJE - (puntosAcumulados % PUNTOS_PARA_CANJE)
+  const progresoPorc = ((puntosAcumulados % PUNTOS_PARA_CANJE) / PUNTOS_PARA_CANJE) * 100
+  const canjesDisponibles = Math.floor(puntosAcumulados / PUNTOS_PARA_CANJE)
 
   const repetirPedido = (pedido) => {
-    pedido.items.forEach(item => {
-      const datosCatalogo = catalogoPlatos[item.nombre]
-      if (datosCatalogo) {
-        agregarItem({ nombre: item.nombre, ...datosCatalogo }, item.cantidad)
-      }
+    const items = pedido.items || []
+    items.forEach(item => {
+      const datos = catalogoPlatos[item.nombre]
+      if (datos) agregarItem({ nombre: item.nombre, ...datos }, item.cantidad)
     })
     setRepetidoId(pedido.id)
     setAbierto(true)
     setTimeout(() => setRepetidoId(null), 2500)
   }
+
+  const formatearFecha = (dateStr) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  if (cargandoAuth) {
+    return (
+      <main>
+        <Navbar />
+        <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--cream)', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>Cargando...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!user) return null
+
+  const nombreMostrar = perfil?.nombre || user.email?.split('@')[0] || 'Usuario'
 
   return (
     <main>
@@ -104,8 +124,12 @@ export default function PerfilPage() {
           Tu cuenta
         </p>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--cream)', fontWeight: '400' }}>
-          Mi Perfil
+          Hola, {nombreMostrar.split(' ')[0]}
         </h1>
+        <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', marginTop: '8px' }}>
+          {user.email}
+          {perfil?.telefono && ` · ${perfil.telefono}`}
+        </p>
       </section>
 
       {/* Contenido */}
@@ -121,7 +145,7 @@ export default function PerfilPage() {
                 Tus puntos SIMPLE
               </p>
               <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '72px', color: 'var(--cream)', fontWeight: '400', lineHeight: '1', marginBottom: '8px' }}>
-                {puntosTotal.toLocaleString('es-AR')}
+                {puntosAcumulados.toLocaleString('es-AR')}
               </p>
               <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', letterSpacing: '1px' }}>
                 puntos acumulados
@@ -137,23 +161,15 @@ export default function PerfilPage() {
             {/* Barra de progreso */}
             <div style={{ border: '1px solid var(--cream-deep)', padding: '28px', background: 'var(--cream)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)' }}>
-                  Próximo canje
-                </p>
-                <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>
-                  {puntosRestantes} pts restantes
-                </p>
+                <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)' }}>Próximo canje</p>
+                <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>{puntosRestantes} pts restantes</p>
               </div>
               <div style={{ height: '6px', background: 'var(--cream-deep)', marginBottom: '12px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${progresoPorc}%`, background: 'var(--olive)', transition: 'width 0.6s ease' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>
-                  {puntosTotal % PUNTOS_PARA_CANJE} / {PUNTOS_PARA_CANJE} pts
-                </p>
-                <p style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>
-                  = 1 vianda gratis 🎁
-                </p>
+                <p style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>{puntosAcumulados % PUNTOS_PARA_CANJE} / {PUNTOS_PARA_CANJE} pts</p>
+                <p style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>= 1 vianda gratis 🎁</p>
               </div>
             </div>
 
@@ -161,9 +177,7 @@ export default function PerfilPage() {
             {canjesDisponibles > 0 && (
               <div style={{ border: '1px solid var(--olive)', padding: '24px 28px', background: 'rgba(74,85,48,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
                 <div>
-                  <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300', marginBottom: '4px' }}>
-                    Canjes disponibles
-                  </p>
+                  <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300', marginBottom: '4px' }}>Canjes disponibles</p>
                   <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--black)', fontWeight: '400' }}>
                     {canjesDisponibles} vianda{canjesDisponibles > 1 ? 's' : ''} gratis
                   </p>
@@ -176,9 +190,7 @@ export default function PerfilPage() {
 
             {/* Niveles */}
             <div style={{ border: '1px solid var(--cream-deep)', padding: '28px' }}>
-              <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)', marginBottom: '20px' }}>
-                Niveles del programa
-              </p>
+              <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)', marginBottom: '20px' }}>Niveles del programa</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {niveles.map((n) => {
                   const activo = nivelActual.nombre === n.nombre
@@ -187,9 +199,7 @@ export default function PerfilPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: n.color === '#0E0E0C' ? 'var(--gold)' : n.color, flexShrink: 0 }} />
                         <span style={{ fontSize: '12px', fontWeight: activo ? '400' : '300', color: 'var(--black)' }}>{n.nombre}</span>
-                        {activo && (
-                          <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>← actual</span>
-                        )}
+                        {activo && <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>← actual</span>}
                       </div>
                       <span style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>
                         {n.hasta === Infinity ? `+${n.desde.toLocaleString()} pts` : `${n.desde}–${n.hasta} pts`}
@@ -199,7 +209,6 @@ export default function PerfilPage() {
                 })}
               </div>
             </div>
-
           </div>
 
           {/* Columna derecha — Historial */}
@@ -208,90 +217,90 @@ export default function PerfilPage() {
               Historial de pedidos
             </h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {pedidosEjemplo.map((pedido) => (
-                <div key={pedido.id} style={{ border: '1px solid var(--cream-deep)', padding: '24px', background: 'var(--cream)' }}>
+            {cargandoPedidos ? (
+              <div style={{ padding: '40px', textAlign: 'center', border: '1px solid var(--cream-deep)' }}>
+                <p style={{ fontSize: '13px', color: '#999', fontWeight: '300' }}>Cargando pedidos...</p>
+              </div>
+            ) : pedidos.length === 0 ? (
+              <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--cream-deep)', background: 'var(--cream)' }}>
+                <p style={{ fontSize: '32px', marginBottom: '16px' }}>🛒</p>
+                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)', fontWeight: '400', marginBottom: '8px' }}>
+                  Todavía no hiciste pedidos
+                </p>
+                <p style={{ fontSize: '12px', color: '#999', fontWeight: '300', marginBottom: '24px' }}>
+                  Tus pedidos van a aparecer acá
+                </p>
+                <a href="/menu" style={{ display: 'inline-block', background: 'var(--black)', color: 'var(--cream)', padding: '12px 28px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
+                  Ver menú
+                </a>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {pedidos.map((pedido) => {
+                  const items = pedido.items || []
+                  const colorEstado = estadoColor[pedido.estado] || estadoColor['pendiente']
+                  return (
+                    <div key={pedido.id} style={{ border: '1px solid var(--cream-deep)', padding: '24px', background: 'var(--cream)' }}>
 
-                  {/* Header pedido */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--black)', fontWeight: '400' }}>
-                        {pedido.id}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>{pedido.fecha}</span>
-                    </div>
-                    <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', background: 'rgba(74,85,48,0.1)', padding: '4px 12px', fontWeight: '300' }}>
-                      {pedido.estado}
-                    </span>
-                  </div>
-
-                  {/* Items */}
-                  <div style={{ marginBottom: '16px' }}>
-                    {pedido.items.map(item => {
-                      const datos = catalogoPlatos[item.nombre]
-                      const precioUnitario = datos ? parseInt(datos.precio.replace(/\$|\./g, '')) : 0
-                      const precioTotal = precioUnitario * item.cantidad
-                      const precioFormateado = '$' + precioTotal.toLocaleString('es-AR')
-                      return (
-                        <div key={item.nombre} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '8px',
-                          gap: '12px',
-                        }}>
-                          <span style={{ fontSize: '13px', color: '#666', fontWeight: '300' }}>
-                            · {item.nombre} x{item.cantidad}
+                      {/* Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--black)', fontWeight: '400' }}>
+                            #{String(pedido.id).slice(-4).toUpperCase()}
                           </span>
-                          <span style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300', whiteSpace: 'nowrap' }}>
-                            {precioFormateado}
-                          </span>
+                          <span style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>{formatearFecha(pedido.created_at)}</span>
                         </div>
-                      )
-                    })}
-                  </div>
+                        <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: colorEstado.color, background: colorEstado.bg, padding: '4px 12px', fontWeight: '300' }}>
+                          {pedido.estado}
+                        </span>
+                      </div>
 
-                  {/* Footer pedido */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--cream-deep)', paddingTop: '14px', flexWrap: 'wrap', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>
-                        {pedido.total}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300', letterSpacing: '1px' }}>
-                        {pedido.puntos}
-                      </span>
+                      {/* Items */}
+                      <div style={{ marginBottom: '16px' }}>
+                        {items.map((item, i) => {
+                          const datos = catalogoPlatos[item.nombre]
+                          const precioUnitario = datos?.precioNum || 0
+                          const precioTotal = precioUnitario * item.cantidad
+                          return (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '12px' }}>
+                              <span style={{ fontSize: '13px', color: '#666', fontWeight: '300' }}>
+                                {datos?.emoji} {item.nombre} x{item.cantidad}
+                              </span>
+                              <span style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300', whiteSpace: 'nowrap' }}>
+                                ${precioTotal.toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* Footer */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--cream-deep)', paddingTop: '14px', flexWrap: 'wrap', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>
+                            ${pedido.total?.toLocaleString('es-AR')}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>
+                            +{pedido.puntos} pts
+                          </span>
+                          {pedido.pago_metodo && (
+                            <span style={{ fontSize: '10px', color: '#999', fontWeight: '300' }}>
+                              {pedido.pago_metodo === 'efectivo' ? '💵 Efectivo' : '💳 MercadoPago'}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => repetirPedido(pedido)}
+                          style={{ background: repetidoId === pedido.id ? 'var(--olive)' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '10px 20px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer', transition: 'background 0.2s ease', whiteSpace: 'nowrap' }}>
+                          {repetidoId === pedido.id ? '✓ Agregado' : 'Repetir pedido'}
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Botón repetir pedido */}
-                    <button
-                      onClick={() => repetirPedido(pedido)}
-                      style={{
-                        background: repetidoId === pedido.id ? 'var(--olive)' : 'var(--black)',
-                        color: 'var(--cream)',
-                        border: 'none',
-                        padding: '10px 20px',
-                        fontSize: '9px',
-                        letterSpacing: '2px',
-                        textTransform: 'uppercase',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '300',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {repetidoId === pedido.id ? '✓ Agregado' : 'Repetir pedido'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p style={{ marginTop: '20px', fontSize: '10px', color: '#ccc', fontWeight: '300', letterSpacing: '1px', textAlign: 'center' }}>
-              El historial real se cargará al conectar Supabase
-            </p>
+                  )
+                })}
+              </div>
+            )}
           </div>
-
         </div>
       </section>
 
