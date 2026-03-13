@@ -1,319 +1,438 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useCart } from '../components/CartContext'
+import { useAuth } from '../components/AuthContext'
 import { supabase } from '../lib/supabaseClient'
-import Link from 'next/link'
 
 export default function ConfirmarPage() {
+  const router = useRouter()
   const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
-  const [form, setForm] = useState({ nombre: '', telefono: '', direccion: '', localidad: '', piso: '', comentarios: '' })
+  const { user } = useAuth()
+
+  const [form, setForm] = useState({
+    nombre: '',
+    telefono: '',
+    direccion: '',
+    localidad: '',
+    piso: '',
+    comentarios: '',
+  })
   const [pagoMetodo, setPagoMetodo] = useState('efectivo')
   const [enviando, setEnviando] = useState(false)
   const [redirigiendo, setRedirigiendo] = useState(false)
   const [exito, setExito] = useState(false)
-  const [errores, setErrores] = useState({})
+  const [error, setError] = useState(null)
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    // Teléfono: solo números
-    if (name === 'telefono' && !/^\d*$/.test(value)) return
-    setForm({ ...form, [name]: value })
-    setErrores({ ...errores, [name]: '' })
+    setForm({ ...form, [e.target.name]: e.target.value })
   }
 
   const validar = () => {
-    const nuevosErrores = {}
-    if (!form.nombre.trim()) nuevosErrores.nombre = 'Ingresá tu nombre completo'
-    if (!form.telefono.trim()) {
-      nuevosErrores.telefono = 'Ingresá tu teléfono'
-    } else if (form.telefono.length < 8 || form.telefono.length > 15) {
-      nuevosErrores.telefono = 'El teléfono debe tener entre 8 y 15 dígitos'
-    }
-    if (!form.direccion.trim()) nuevosErrores.direccion = 'Ingresá tu dirección'
-    if (!form.localidad.trim()) nuevosErrores.localidad = 'Ingresá tu localidad'
-    return nuevosErrores
+    if (!form.nombre.trim()) return 'El nombre es obligatorio'
+    if (!form.telefono.trim()) return 'El teléfono es obligatorio'
+    if (!form.direccion.trim()) return 'La dirección es obligatoria'
+    if (!form.localidad.trim()) return 'La localidad es obligatoria'
+    return null
   }
 
-  const handleSubmit = async () => {
-    const nuevosErrores = validar()
-    if (Object.keys(nuevosErrores).length > 0) {
-      setErrores(nuevosErrores)
-      return
-    }
+  const handleConfirmar = async () => {
+    const errValidacion = validar()
+    if (errValidacion) { setError(errValidacion); return }
+    if (items.length === 0) { setError('Tu carrito está vacío'); return }
+
+    setError(null)
     setEnviando(true)
 
-    if (pagoMetodo === 'efectivo') {
-      const { error: supaError } = await supabase.from('pedidos').insert([{
+    try {
+      if (pagoMetodo === 'mercadopago') {
+        // Flujo MercadoPago: guardar datos en sessionStorage y redirigir
+        setRedirigiendo(true)
+
+        sessionStorage.setItem('pedidoPendiente', JSON.stringify({
+          nombre: form.nombre,
+          telefono: form.telefono,
+          direccion: form.direccion + (form.piso ? `, ${form.piso}` : ''),
+          localidad: form.localidad,
+          piso: form.piso,
+          comentarios: form.comentarios,
+          items,
+          total: totalPrecio,
+          puntosGanados: totalPuntos,
+          metodoPago: 'mercadopago',
+          user_id: user?.id ?? null,
+        }))
+
+        const res = await fetch('/api/mp-crear-preferencia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items, total: totalPrecio }),
+        })
+        const data = await res.json()
+        if (data.init_point) {
+          window.location.href = data.init_point
+        } else {
+          throw new Error('No se pudo crear la preferencia de pago')
+        }
+        return
+      }
+
+      // Flujo efectivo: guardar directo en Supabase
+      const { error: errorPedido } = await supabase.from('pedidos').insert([{
         nombre: form.nombre,
         telefono: form.telefono,
-        direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
-        piso: form.piso,
-        comentarios: form.comentarios,
-        items: items,
+        direccion: form.direccion + (form.piso ? `, ${form.piso}` : ''),
+        piso: form.piso || null,
+        comentarios: form.comentarios || null,
+        items,
         total: totalPrecio,
         puntos: totalPuntos,
         estado: 'pendiente',
         pago_metodo: 'efectivo',
         pago_estado: 'pendiente',
+        mp_payment_id: null,
+        user_id: user?.id ?? null,
       }])
-      setEnviando(false)
-      if (supaError) {
-        setErrores({ general: 'Hubo un error al enviar el pedido. Intentá de nuevo.' })
-      } else {
-        vaciarCarrito()
-        setExito(true)
-      }
 
-    } else if (pagoMetodo === 'mercadopago') {
-      sessionStorage.setItem('pedido_pendiente', JSON.stringify({
-        nombre: form.nombre,
-        telefono: form.telefono,
-        direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
-        piso: form.piso,
-        comentarios: form.comentarios,
-        items: items,
-        total: totalPrecio,
-        puntos: totalPuntos,
-      }))
+      if (errorPedido) throw errorPedido
 
-      try {
-        const res = await fetch('/api/mp-crear-preferencia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items,
-            nombre: form.nombre,
-            telefono: form.telefono,
-            direccion: `${form.direccion}${form.piso ? `, ${form.piso}` : ''}, ${form.localidad}`,
-            piso: form.piso,
-            comentarios: form.comentarios,
-          }),
-        })
-        const data = await res.json()
-        if (data.init_point) {
-          setEnviando(false)
-          setRedirigiendo(true)
-          setTimeout(() => {
-            window.location.href = data.init_point
-          }, 2000)
-        } else {
-          setErrores({ general: 'Error al conectar con MercadoPago. Intentá de nuevo.' })
-          setEnviando(false)
+      // Sumar puntos al perfil si está logueado
+      if (user?.id && totalPuntos > 0) {
+        const { data: perfil } = await supabase
+          .from('perfiles')
+          .select('puntos')
+          .eq('id', user.id)
+          .single()
+
+        if (perfil) {
+          await supabase
+            .from('perfiles')
+            .update({ puntos: (perfil.puntos ?? 0) + totalPuntos })
+            .eq('id', user.id)
         }
-      } catch (e) {
-        setErrores({ general: 'Error al conectar con MercadoPago. Intentá de nuevo.' })
-        setEnviando(false)
       }
+
+      vaciarCarrito()
+      setExito(true)
+
+    } catch (err) {
+      console.error('Error al confirmar pedido:', err)
+      setError('Hubo un problema al confirmar el pedido. Intentá de nuevo.')
+    } finally {
+      setEnviando(false)
     }
   }
 
-  // Pantalla de redirección a MP
-  if (redirigiendo) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif', padding: '40px 20px' }}>
-        <div style={{ textAlign: 'center', maxWidth: '400px' }}>
-          <div style={{ width: '64px', height: '64px', border: '3px solid rgba(0,158,227,0.3)', borderTop: '3px solid #009ee3', borderRadius: '50%', margin: '0 auto 32px', animation: 'spin 1s linear infinite' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '26px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>
-            Redirigiendo a MercadoPago
-          </h2>
-          <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.7' }}>
-            En un momento vas a ser redirigido al checkout seguro de MercadoPago para completar tu pago.
-          </p>
-          <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <div style={{ width: '8px', height: '8px', background: '#009ee3', borderRadius: '50%', animation: 'pulse 1s ease-in-out infinite' }} />
-            <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-            <span style={{ fontSize: '11px', color: '#009ee3', letterSpacing: '2px', textTransform: 'uppercase' }}>Procesando...</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
+  // ── Pantalla de éxito (efectivo) ──────────────────────────────────────────
   if (exito) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif', padding: '40px 20px' }}>
-        <div style={{ textAlign: 'center', maxWidth: '480px' }}>
-          <p style={{ fontSize: '48px', marginBottom: '24px' }}>✓</p>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--cream)', fontWeight: '400', marginBottom: '16px' }}>¡Pedido recibido!</h1>
-          <p style={{ fontSize: '14px', color: 'var(--cream-mid)', fontWeight: '300', lineHeight: '1.7', marginBottom: '8px' }}>
-            Nos comunicaremos a la brevedad para coordinar la entrega.
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--cream)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 24px',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          background: 'var(--white)',
+          border: '1px solid var(--cream-deep)',
+          padding: '56px 48px',
+          maxWidth: '480px',
+          width: '100%',
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '24px' }}>✅</div>
+          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>
+            Pedido recibido
           </p>
-          <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '300', marginBottom: '40px' }}>
-            💵 Pagás en efectivo al recibir el pedido
+          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>
+            ¡Gracias por tu pedido!
+          </h1>
+          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '8px' }}>
+            Te avisamos por WhatsApp cuando esté en camino.
           </p>
-          <Link href="/menu" style={{ display: 'inline-block', background: 'var(--cream)', color: 'var(--black)', padding: '14px 32px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
-            Seguir comprando
-          </Link>
+          {user && totalPuntos > 0 && (
+            <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '500', marginTop: '8px' }}>
+              +{totalPuntos} puntos sumados a tu cuenta 🎉
+            </p>
+          )}
+          {!user && totalPuntos > 0 && (
+            <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+              Iniciá sesión para acumular puntos en tu próximo pedido
+            </p>
+          )}
+          <button
+            onClick={() => router.push('/')}
+            style={{
+              marginTop: '32px',
+              width: '100%',
+              background: 'var(--black)',
+              color: 'var(--cream)',
+              border: 'none',
+              padding: '18px',
+              fontSize: '10px',
+              letterSpacing: '3px',
+              textTransform: 'uppercase',
+              fontFamily: 'Jost, sans-serif',
+              cursor: 'pointer',
+            }}
+          >
+            Volver al inicio
+          </button>
         </div>
       </div>
     )
   }
 
+  // ── Pantalla redirigiendo a MP ─────────────────────────────────────────────
+  if (redirigiendo) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--cream)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '40px 24px',
+      }}>
+        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '16px' }}>
+          Redirigiendo
+        </p>
+        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)', fontWeight: '400' }}>
+          Te llevamos a MercadoPago...
+        </h2>
+      </div>
+    )
+  }
+
+  // ── Carrito vacío ──────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</p>
-          <p style={{ color: 'var(--cream)', fontSize: '18px', marginBottom: '32px' }}>Tu carrito está vacío</p>
-          <Link href="/menu" style={{ color: 'var(--gold)', fontSize: '12px', letterSpacing: '3px', textTransform: 'uppercase', textDecoration: 'none' }}>Ver menú →</Link>
-        </div>
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--cream)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '40px 24px',
+      }}>
+        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)', marginBottom: '24px' }}>
+          Tu carrito está vacío
+        </p>
+        <button
+          onClick={() => router.push('/menu')}
+          style={{
+            background: 'var(--black)',
+            color: 'var(--cream)',
+            border: 'none',
+            padding: '16px 40px',
+            fontSize: '10px',
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            fontFamily: 'Jost, sans-serif',
+            cursor: 'pointer',
+          }}
+        >
+          Ver menú
+        </button>
       </div>
     )
   }
 
-  const inputStyle = (campo) => ({
-    display: 'block',
+  // ── Formulario principal ───────────────────────────────────────────────────
+  const inputStyle = {
     width: '100%',
-    background: '#fff',
-    border: `1px solid ${errores[campo] ? '#e74c3c' : '#E0E0E0'}`,
-    color: 'var(--black)',
+    border: '1px solid var(--cream-deep)',
+    background: 'var(--white)',
     padding: '14px 16px',
     fontSize: '14px',
     fontFamily: 'Jost, sans-serif',
-    fontWeight: '300',
+    color: 'var(--black)',
     outline: 'none',
-    marginBottom: errores[campo] ? '4px' : '12px',
     boxSizing: 'border-box',
-  })
+  }
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '9px',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    color: 'var(--olive-mid)',
+    marginBottom: '8px',
+    fontWeight: '300',
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--black)', fontFamily: 'Jost, sans-serif', padding: '60px 20px' }}>
-      <div className="confirmar-content">
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '60px 24px 80px' }}>
+      <div style={{ maxWidth: '560px', margin: '0 auto' }}>
 
-        {/* Formulario */}
-        <div>
-          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '8px' }}>Confirmar pedido</p>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--cream)', fontWeight: '400', marginBottom: '40px', lineHeight: '1.2' }}>Datos de entrega</h1>
+        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>
+          Último paso
+        </p>
+        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--black)', fontWeight: '400', marginBottom: '40px' }}>
+          Confirmá tu pedido
+        </h1>
 
-          {/* Nombre */}
-          <input type="text" name="nombre" placeholder="Nombre completo *" value={form.nombre} onChange={handleChange} style={inputStyle('nombre')} />
-          {errores.nombre && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.nombre}</p>}
-
-          {/* Teléfono */}
-          <input
-            type="tel"
-            name="telefono"
-            placeholder="Teléfono / WhatsApp * (solo números)"
-            value={form.telefono}
-            onChange={handleChange}
-            maxLength={15}
-            inputMode="numeric"
-            style={inputStyle('telefono')}
-          />
-          {errores.telefono
-            ? <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.telefono}</p>
-            : <p style={{ color: 'rgba(247,243,236,0.35)', fontSize: '10px', marginBottom: '12px', fontWeight: '300' }}>Solo números, entre 8 y 15 dígitos</p>
-          }
-
-          {/* Dirección */}
-          <input type="text" name="direccion" placeholder="Dirección *" value={form.direccion} onChange={handleChange} style={inputStyle('direccion')} />
-          {errores.direccion && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.direccion}</p>}
-
-          {/* Localidad */}
-          <input type="text" name="localidad" placeholder="Localidad *" value={form.localidad} onChange={handleChange} style={inputStyle('localidad')} />
-          {errores.localidad && <p style={{ color: '#e74c3c', fontSize: '11px', marginBottom: '12px', fontWeight: '300' }}>⚠ {errores.localidad}</p>}
-
-          {/* Piso */}
-          <input type="text" name="piso" placeholder="Piso / Depto (opcional)" value={form.piso} onChange={handleChange} style={inputStyle('piso')} />
-
-          {/* Comentarios */}
-          <textarea
-            name="comentarios"
-            placeholder="Comentarios (opcional)"
-            value={form.comentarios}
-            onChange={handleChange}
-            rows={3}
-            style={{ ...inputStyle('comentarios'), marginBottom: '28px', resize: 'vertical' }}
-          />
-
-          {/* Método de pago */}
-          <div style={{ marginBottom: '32px' }}>
-            <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px' }}>
-              Forma de pago
-            </p>
-            <div className="pago-metodos-grid">
-              {[
-                { value: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Al recibir el pedido' },
-                { value: 'mercadopago', label: 'MercadoPago', emoji: '💳', desc: 'Pago online seguro' },
-              ].map(op => (
-                <button
-                  key={op.value}
-                  onClick={() => setPagoMetodo(op.value)}
-                  style={{
-                    background: pagoMetodo === op.value ? '#1a3a2a' : '#fff',
-                    border: pagoMetodo === op.value ? '2px solid #2ecc71' : '2px solid #E0E0E0',
-                    color: pagoMetodo === op.value ? '#fff' : 'var(--black)',
-                    padding: '16px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontFamily: 'Jost, sans-serif',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <p style={{ fontSize: '22px', marginBottom: '6px' }}>{op.emoji}</p>
-                  <p style={{ fontSize: '13px', fontWeight: '400', marginBottom: '4px', color: pagoMetodo === op.value ? '#2ecc71' : 'var(--black)' }}>{op.label}</p>
-                  <p style={{ fontSize: '11px', fontWeight: '300', color: pagoMetodo === op.value ? 'rgba(255,255,255,0.6)' : '#999' }}>{op.desc}</p>
-                </button>
-              ))}
-            </div>
-            {pagoMetodo === 'mercadopago' && (
-              <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.5)', marginTop: '12px', fontWeight: '300' }}>
-                💳 Vas a ser redirigido a MercadoPago para completar el pago de forma segura.
-              </p>
-            )}
-          </div>
-
-          {errores.general && <p style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '16px' }}>⚠ {errores.general}</p>}
-
-          <button
-            onClick={handleSubmit}
-            disabled={enviando}
-            style={{
-              width: '100%',
-              background: enviando ? '#ccc' : pagoMetodo === 'mercadopago' ? '#009ee3' : 'var(--cream)',
-              color: pagoMetodo === 'mercadopago' ? '#fff' : 'var(--black)',
-              border: 'none', padding: '16px',
-              fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase',
-              fontFamily: 'Jost, sans-serif', fontWeight: '400',
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >
-            {enviando ? 'Procesando...' : pagoMetodo === 'mercadopago' ? '💳 Pagar con MercadoPago' : 'Confirmar pedido'}
-          </button>
-        </div>
-
-        {/* Resumen */}
-        <div style={{ background: '#fff', border: '1px solid #E0E0E0', padding: '28px', position: 'sticky', top: '20px' }}>
-          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300', marginBottom: '20px' }}>Tu pedido</p>
-
+        {/* Resumen del carrito */}
+        <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '20px', fontWeight: '300' }}>
+            Tu pedido
+          </p>
           {items.map((item, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid #F0F0F0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>{item.emoji}</span>
-                <div>
-                  <p style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300' }}>{item.nombre}</p>
-                  <p style={{ fontSize: '11px', color: '#999' }}>x{item.cantidad}</p>
-                </div>
-              </div>
-              <span style={{ fontSize: '13px', color: 'var(--black)' }}>{item.precio}</span>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '14px', color: 'var(--black)' }}>
+                {item.emoji} {item.nombre} <span style={{ color: '#999' }}>×{item.cantidad}</span>
+              </span>
+              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '15px', color: 'var(--black)' }}>
+                ${(item.precioNum * item.cantidad).toLocaleString('es-AR')}
+              </span>
             </div>
           ))}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999' }}>Total</span>
-            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>${totalPrecio.toLocaleString('es-AR')}</span>
+          <div style={{ borderTop: '1px solid var(--cream-deep)', paddingTop: '16px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '300' }}>Total</span>
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)' }}>
+              ${totalPrecio.toLocaleString('es-AR')}
+            </span>
           </div>
-          <p style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '300', textAlign: 'right' }}>+{totalPuntos} puntos SIMPLE</p>
-
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0F0F0' }}>
-            <p style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>
-              {pagoMetodo === 'efectivo' ? '💵 Pagás en efectivo al recibir' : '💳 Pago online — serás redirigido a MP'}
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>
+              {user ? `Ganás +${totalPuntos} pts con este pedido` : `Iniciá sesión para sumar +${totalPuntos} pts`}
+            </span>
           </div>
         </div>
+
+        {/* Datos de entrega */}
+        <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '24px', fontWeight: '300' }}>
+            Datos de entrega
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={labelStyle}>Nombre</label>
+              <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Tu nombre" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Teléfono</label>
+              <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="221 000-0000" style={inputStyle} />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Dirección</label>
+            <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Calle y número" style={inputStyle} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={labelStyle}>Localidad</label>
+              <input name="localidad" value={form.localidad} onChange={handleChange} placeholder="La Plata" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Piso / Depto (opcional)</label>
+              <input name="piso" value={form.piso} onChange={handleChange} placeholder="3° B" style={inputStyle} />
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Comentarios (opcional)</label>
+            <textarea
+              name="comentarios"
+              value={form.comentarios}
+              onChange={handleChange}
+              placeholder="Sin sal, alergia a..., etc."
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' }}
+            />
+          </div>
+        </div>
+
+        {/* Método de pago */}
+        <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '20px', fontWeight: '300' }}>
+            Método de pago
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {[
+              { id: 'efectivo', label: 'Efectivo', icon: '💵' },
+              { id: 'mercadopago', label: 'MercadoPago', icon: '💳' },
+            ].map(({ id, label, icon }) => (
+              <button
+                key={id}
+                onClick={() => setPagoMetodo(id)}
+                style={{
+                  border: pagoMetodo === id ? '2px solid var(--black)' : '1px solid var(--cream-deep)',
+                  background: pagoMetodo === id ? 'var(--black)' : 'var(--white)',
+                  color: pagoMetodo === id ? 'var(--cream)' : 'var(--black)',
+                  padding: '20px 16px',
+                  cursor: 'pointer',
+                  fontFamily: 'Jost, sans-serif',
+                  fontSize: '12px',
+                  letterSpacing: '1px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span style={{ fontSize: '24px' }}>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <p style={{ color: '#e53e3e', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>
+            {error}
+          </p>
+        )}
+
+        <button
+          onClick={handleConfirmar}
+          disabled={enviando}
+          style={{
+            width: '100%',
+            background: enviando ? '#999' : 'var(--black)',
+            color: 'var(--cream)',
+            border: 'none',
+            padding: '20px',
+            fontSize: '10px',
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            fontFamily: 'Jost, sans-serif',
+            fontWeight: '300',
+            cursor: enviando ? 'not-allowed' : 'pointer',
+            transition: 'background 0.2s ease',
+          }}
+        >
+          {enviando ? 'Procesando...' : pagoMetodo === 'mercadopago' ? 'Pagar con MercadoPago →' : 'Confirmar pedido'}
+        </button>
+
+        <button
+          onClick={() => router.back()}
+          style={{
+            width: '100%',
+            marginTop: '12px',
+            background: 'transparent',
+            border: 'none',
+            color: '#999',
+            fontSize: '11px',
+            letterSpacing: '1px',
+            cursor: 'pointer',
+            fontFamily: 'Jost, sans-serif',
+          }}
+        >
+          ← Volver al carrito
+        </button>
 
       </div>
     </div>
