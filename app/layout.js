@@ -1,5 +1,6 @@
 import "./globals.css"
 import { CartProvider } from './components/CartContext'
+import { AuthProvider } from './components/AuthContext'
 import CarritoDrawer from './components/CarritoDrawer'
 
 export const metadata = {
@@ -23,10 +24,12 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <CartProvider>
-          {children}
-          <CarritoDrawer />
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <CarritoDrawer />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )
