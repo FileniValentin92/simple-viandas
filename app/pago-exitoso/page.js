@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
 import Link from 'next/link'
@@ -8,35 +8,81 @@ import Link from 'next/link'
 function PagoExitosoContent() {
   const searchParams = useSearchParams()
   const [guardado, setGuardado] = useState(false)
+  const procesando = useRef(false)
 
   useEffect(() => {
     const guardarPedido = async () => {
+      if (procesando.current) return
+      procesando.current = true
+
       const paymentId = searchParams.get('payment_id')
       const status = searchParams.get('status')
       if (status !== 'approved' || !paymentId) return
-      if (guardado) return
 
-      const datosStr = sessionStorage.getItem('pedido_pendiente')
+      const datosStr = sessionStorage.getItem('pedidoPendiente')
       if (!datosStr) return
 
       const datos = JSON.parse(datosStr)
 
-      await supabase.from('pedidos').insert([{
+      // 1. Insertar pedido en Supabase
+      const { error } = await supabase.from('pedidos').insert([{
         nombre: datos.nombre,
         telefono: datos.telefono,
         direccion: datos.direccion,
-        piso: datos.piso,
-        comentarios: datos.comentarios,
+        piso: datos.piso || null,
+        comentarios: datos.comentarios || null,
         items: datos.items,
         total: datos.total,
-        puntos: datos.puntos,
+        puntos: datos.puntosGanados ?? 0,
         estado: 'pendiente',
         pago_metodo: 'mercadopago',
         pago_estado: 'pagado',
         mp_payment_id: paymentId,
+        user_id: datos.user_id ?? null,
       }])
 
-      sessionStorage.removeItem('pedido_pendiente')
+      if (error) {
+        console.error('Error guardando pedido MP:', error)
+        return
+      }
+
+      // 2. Sumar puntos al perfil si hay usuario logueado
+      if (datos.user_id && datos.puntosGanados > 0) {
+        const { data: perfil } = await supabase
+          .from('perfiles')
+          .select('puntos')
+          .eq('id', datos.user_id)
+          .single()
+
+        if (perfil) {
+          await supabase
+            .from('perfiles')
+            .update({ puntos: (perfil.puntos ?? 0) + datos.puntosGanados })
+            .eq('id', datos.user_id)
+        }
+      }
+
+      // 3. Enviar email de confirmación si hay email
+      if (datos.emailUsuario) {
+        try {
+          await fetch('/api/enviar-confirmacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre: datos.nombre,
+              email: datos.emailUsuario,
+              items: datos.items,
+              total: datos.total,
+              direccion: datos.direccion,
+              telefono: datos.telefono,
+            }),
+          })
+        } catch (err) {
+          console.error('Error enviando email:', err)
+        }
+      }
+
+      sessionStorage.removeItem('pedidoPendiente')
       setGuardado(true)
     }
 
@@ -49,11 +95,11 @@ function PagoExitosoContent() {
       <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--cream)', fontWeight: '400', marginBottom: '16px' }}>
         ¡Pago confirmado!
       </h1>
-      <p style={{ fontSize: '14px', color: 'var(--cream-mid)', fontWeight: '300', lineHeight: '1.7', marginBottom: '8px' }}>
+      <p style={{ fontSize: '14px', color: 'rgba(247,243,236,0.7)', fontWeight: '300', lineHeight: '1.7', marginBottom: '8px' }}>
         Tu pago fue procesado correctamente.
       </p>
       <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '300', marginBottom: '40px' }}>
-        Nos comunicaremos a la brevedad para coordinar la entrega.
+        Nos comunicaremos por WhatsApp para coordinar la entrega.
       </p>
       <Link href="/menu" style={{
         display: 'inline-block', background: 'var(--cream)', color: 'var(--black)',
