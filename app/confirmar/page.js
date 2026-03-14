@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabaseClient'
 export default function ConfirmarPage() {
   const router = useRouter()
   const { items, totalPrecio, totalPuntos, vaciarCarrito } = useCart()
-  const { user } = useAuth()
+  const { user, perfil } = useAuth()
 
   const [form, setForm] = useState({
     nombre: '',
@@ -48,6 +48,26 @@ export default function ConfirmarPage() {
     return d
   }
 
+  const enviarEmailConfirmacion = async (emailDestino) => {
+    try {
+      await fetch('/api/enviar-confirmacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: form.nombre,
+          email: emailDestino,
+          items,
+          total: totalPrecio,
+          direccion: direccionCompleta(),
+          telefono: form.telefono,
+        }),
+      })
+    } catch (err) {
+      console.error('Error enviando email:', err)
+      // No bloqueamos el flujo si falla el email
+    }
+  }
+
   const handleConfirmar = async () => {
     const errValidacion = validar()
     if (errValidacion) { setError(errValidacion); return }
@@ -71,6 +91,7 @@ export default function ConfirmarPage() {
           puntosGanados: totalPuntos,
           metodoPago: 'mercadopago',
           user_id: user?.id ?? null,
+          emailUsuario: user?.email ?? null,
         }))
 
         const res = await fetch('/api/mp-crear-preferencia', {
@@ -108,18 +129,24 @@ export default function ConfirmarPage() {
 
       // Sumar puntos al perfil si está logueado
       if (user?.id && totalPuntos > 0) {
-        const { data: perfil } = await supabase
+        const { data: perfilData } = await supabase
           .from('perfiles')
           .select('puntos')
           .eq('id', user.id)
           .single()
 
-        if (perfil) {
+        if (perfilData) {
           await supabase
             .from('perfiles')
-            .update({ puntos: (perfil.puntos ?? 0) + totalPuntos })
+            .update({ puntos: (perfilData.puntos ?? 0) + totalPuntos })
             .eq('id', user.id)
         }
+      }
+
+      // Enviar email de confirmación si hay email disponible
+      const emailDestino = user?.email ?? null
+      if (emailDestino) {
+        await enviarEmailConfirmacion(emailDestino)
       }
 
       vaciarCarrito()
@@ -141,12 +168,23 @@ export default function ConfirmarPage() {
           <div style={{ fontSize: '48px', marginBottom: '24px' }}>✅</div>
           <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>Pedido recibido</p>
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>¡Gracias por tu pedido!</h1>
-          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '8px' }}>Te avisamos por WhatsApp cuando esté en camino.</p>
+          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '8px' }}>
+            Te avisamos por WhatsApp cuando esté en camino.
+          </p>
+          {user?.email && (
+            <p style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>
+              📧 Te enviamos una confirmación a {user.email}
+            </p>
+          )}
           {user && totalPuntos > 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '500', marginTop: '8px' }}>+{totalPuntos} puntos sumados a tu cuenta 🎉</p>
+            <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '500', marginTop: '12px' }}>
+              +{totalPuntos} puntos sumados a tu cuenta 🎉
+            </p>
           )}
           {!user && totalPuntos > 0 && (
-            <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>Iniciá sesión para acumular puntos en tu próximo pedido</p>
+            <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+              Iniciá sesión para acumular puntos en tu próximo pedido
+            </p>
           )}
           <button onClick={() => router.push('/')} style={{ marginTop: '32px', width: '100%', background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '18px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
             Volver al inicio
@@ -232,7 +270,6 @@ export default function ConfirmarPage() {
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '24px', fontWeight: '300' }}>Datos de entrega</p>
 
-          {/* Nombre y Teléfono */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={labelStyle}>Nombre *</label>
@@ -244,7 +281,6 @@ export default function ConfirmarPage() {
             </div>
           </div>
 
-          {/* Calle y Altura */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={labelStyle}>Calle *</label>
@@ -256,7 +292,6 @@ export default function ConfirmarPage() {
             </div>
           </div>
 
-          {/* Código Postal y Localidad */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={labelStyle}>Código postal *</label>
@@ -268,13 +303,11 @@ export default function ConfirmarPage() {
             </div>
           </div>
 
-          {/* Piso/Depto */}
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>Piso / Depto (opcional)</label>
             <input name="piso" value={form.piso} onChange={handleChange} placeholder="3° B" style={inputStyle} />
           </div>
 
-          {/* Comentarios */}
           <div>
             <label style={labelStyle}>Comentarios (opcional)</label>
             <textarea name="comentarios" value={form.comentarios} onChange={handleChange} placeholder="Sin sal, alergia a..., etc." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
