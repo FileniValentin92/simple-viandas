@@ -21,6 +21,7 @@ const pagoEstadoColores = {
 const pagoMetodoIconos = {
   efectivo:      { emoji: '💵', label: 'Efectivo' },
   transferencia: { emoji: '🏦', label: 'Transferencia' },
+  mercadopago:   { emoji: '💳', label: 'MercadoPago' },
 }
 
 export default function AdminPage() {
@@ -31,6 +32,8 @@ export default function AdminPage() {
   const [cargando, setCargando] = useState(true)
   const [pedidoAbierto, setPedidoAbierto] = useState(null)
   const [filtro, setFiltro] = useState('todos')
+  const [confirmandoBorrar, setConfirmandoBorrar] = useState(false)
+  const [borrando, setBorrando] = useState(false)
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) { setLogueado(true); setErrorPass(false) }
@@ -56,6 +59,17 @@ export default function AdminPage() {
     await supabase.from('pedidos').update({ pago_estado: nuevoPagoEstado }).eq('id', id)
     setPedidos(prev => prev.map(p => p.id === id ? { ...p, pago_estado: nuevoPagoEstado } : p))
     if (pedidoAbierto?.id === id) setPedidoAbierto(prev => ({ ...prev, pago_estado: nuevoPagoEstado }))
+  }
+
+  const borrarPedido = async (id) => {
+    setBorrando(true)
+    const { error } = await supabase.from('pedidos').delete().eq('id', id)
+    if (!error) {
+      setPedidos(prev => prev.filter(p => p.id !== id))
+      setPedidoAbierto(null)
+      setConfirmandoBorrar(false)
+    }
+    setBorrando(false)
   }
 
   const formatFecha = (str) => {
@@ -160,7 +174,7 @@ export default function AdminPage() {
                     return (
                       <tr key={pedido.id}
                         style={{ borderBottom: '1px solid #F0F0F0', background: activo ? '#FAFAFA' : '#fff', cursor: 'pointer' }}
-                        onClick={() => setPedidoAbierto(activo ? null : pedido)}
+                        onClick={() => { setPedidoAbierto(activo ? null : pedido); setConfirmandoBorrar(false) }}
                       >
                         <td style={{ padding: '14px 16px', fontSize: '12px', color: '#666', whiteSpace: 'nowrap' }}>{formatFecha(pedido.created_at)}</td>
                         <td style={{ padding: '14px 16px' }}>
@@ -201,7 +215,7 @@ export default function AdminPage() {
             <div style={{ background: '#fff', border: '1px solid #E0E0E0', position: 'sticky', top: '20px' }}>
               <div style={{ background: 'var(--black)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--cream)', fontWeight: '400' }}>Detalle del pedido</p>
-                <button onClick={() => setPedidoAbierto(null)} style={{ background: 'transparent', border: 'none', color: 'var(--cream)', cursor: 'pointer', fontSize: '18px', opacity: 0.6 }}>✕</button>
+                <button onClick={() => { setPedidoAbierto(null); setConfirmandoBorrar(false) }} style={{ background: 'transparent', border: 'none', color: 'var(--cream)', cursor: 'pointer', fontSize: '18px', opacity: 0.6 }}>✕</button>
               </div>
 
               <div style={{ padding: '20px' }}>
@@ -253,13 +267,9 @@ export default function AdminPage() {
                           background: pedidoAbierto.pago_estado === key ? val.bg : 'transparent',
                           color: pedidoAbierto.pago_estado === key ? val.color : '#999',
                           border: pedidoAbierto.pago_estado === key ? `1px solid ${val.color}60` : '1px solid #E0E0E0',
-                          padding: '10px 12px',
-                          fontSize: '10px',
-                          letterSpacing: '1px',
-                          textTransform: 'uppercase',
-                          fontFamily: 'Jost, sans-serif',
-                          cursor: 'pointer',
-                          fontWeight: pedidoAbierto.pago_estado === key ? '400' : '300',
+                          padding: '10px 12px', fontSize: '10px', letterSpacing: '1px',
+                          textTransform: 'uppercase', fontFamily: 'Jost, sans-serif',
+                          cursor: 'pointer', fontWeight: pedidoAbierto.pago_estado === key ? '400' : '300',
                         }}
                       >
                         {pedidoAbierto.pago_estado === key ? '● ' : '○ '}{val.label}
@@ -269,7 +279,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Estado pedido */}
-                <div>
+                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
                   <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Estado del pedido</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(estadoColores).map(([key, val]) => (
@@ -280,13 +290,9 @@ export default function AdminPage() {
                           background: pedidoAbierto.estado === key ? val.bg : 'transparent',
                           color: pedidoAbierto.estado === key ? val.color : '#999',
                           border: pedidoAbierto.estado === key ? `1px solid ${val.color}40` : '1px solid #E0E0E0',
-                          padding: '10px 16px',
-                          fontSize: '10px',
-                          letterSpacing: '2px',
-                          textTransform: 'uppercase',
-                          fontFamily: 'Jost, sans-serif',
-                          cursor: 'pointer',
-                          textAlign: 'left',
+                          padding: '10px 16px', fontSize: '10px', letterSpacing: '2px',
+                          textTransform: 'uppercase', fontFamily: 'Jost, sans-serif',
+                          cursor: 'pointer', textAlign: 'left',
                           fontWeight: pedidoAbierto.estado === key ? '400' : '300',
                         }}
                       >
@@ -295,6 +301,46 @@ export default function AdminPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Borrar pedido */}
+                <div>
+                  {!confirmandoBorrar ? (
+                    <button
+                      onClick={() => setConfirmandoBorrar(true)}
+                      style={{
+                        width: '100%', background: 'transparent',
+                        border: '1px solid #F8D7DA', color: '#721C24',
+                        padding: '10px 16px', fontSize: '9px', letterSpacing: '2px',
+                        textTransform: 'uppercase', fontFamily: 'Jost, sans-serif',
+                        cursor: 'pointer', fontWeight: '300',
+                      }}
+                    >
+                      🗑 Eliminar pedido
+                    </button>
+                  ) : (
+                    <div style={{ background: '#FFF5F5', border: '1px solid #F8D7DA', padding: '16px' }}>
+                      <p style={{ fontSize: '12px', color: '#721C24', marginBottom: '12px', textAlign: 'center' }}>
+                        ¿Confirmar eliminación? Esta acción no se puede deshacer.
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button
+                          onClick={() => setConfirmandoBorrar(false)}
+                          style={{ background: '#fff', border: '1px solid #E0E0E0', color: '#666', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => borrarPedido(pedidoAbierto.id)}
+                          disabled={borrando}
+                          style={{ background: '#721C24', border: 'none', color: '#fff', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: borrando ? 'not-allowed' : 'pointer' }}
+                        >
+                          {borrando ? 'Borrando...' : 'Sí, eliminar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           )}
