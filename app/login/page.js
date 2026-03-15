@@ -61,7 +61,8 @@ export default function LoginPage() {
       return
     }
 
-    await supabase.from('perfiles').insert([{
+    // upsert en vez de insert para no chocar con el trigger
+    await supabase.from('perfiles').upsert([{
       id: data.user.id,
       email: form.email,
       nombre: form.nombre,
@@ -107,7 +108,6 @@ export default function LoginPage() {
       <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', fontFamily: 'Jost, sans-serif' }}>
         <div style={{ width: '100%', maxWidth: '440px' }}>
 
-          {/* Tabs — solo para login y registro */}
           {modo !== 'reset' && (
             <div style={{ display: 'flex', marginBottom: '40px', borderBottom: '1px solid rgba(247,243,236,0.15)' }}>
               {[{ id: 'login', label: 'Iniciar sesión' }, { id: 'registro', label: 'Crear cuenta' }].map(tab => (
@@ -125,14 +125,12 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Título */}
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--cream)', fontWeight: '400', marginBottom: '32px' }}>
             {modo === 'login' && 'Bienvenido de nuevo'}
             {modo === 'registro' && 'Creá tu cuenta'}
             {modo === 'reset' && 'Restablecer contraseña'}
           </h1>
 
-          {/* Campos según modo */}
           {modo === 'registro' && (
             <input type="text" name="nombre" placeholder="Nombre completo *" value={form.nombre} onChange={handleChange} style={inputStyle} />
           )}
@@ -147,7 +145,6 @@ export default function LoginPage() {
             <input type="tel" name="telefono" placeholder="Teléfono / WhatsApp *" value={form.telefono} onChange={handleChange} style={{ ...inputStyle, marginBottom: '24px' }} />
           )}
 
-          {/* Olvidé mi contraseña — solo en login */}
           {modo === 'login' && (
             <div style={{ textAlign: 'right', marginTop: '-4px', marginBottom: '20px' }}>
               <button onClick={() => cambiarModo('reset')} style={{ background: 'none', border: 'none', color: 'rgba(247,243,236,0.4)', cursor: 'pointer', fontSize: '11px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
@@ -159,7 +156,6 @@ export default function LoginPage() {
           {error && (
             <div style={{ marginBottom: '16px' }}>
               <p style={{ color: '#e74c3c', fontSize: '12px', fontWeight: '300', marginBottom: '4px' }}>⚠ {error}</p>
-              {/* Si el error es de email ya registrado, mostrar botón para ir a login */}
               {error.includes('ya está registrado') && (
                 <button onClick={() => cambiarModo('login')} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '12px', fontFamily: 'Jost, sans-serif', textDecoration: 'underline', padding: 0 }}>
                   Ir a iniciar sesión →
@@ -184,7 +180,6 @@ export default function LoginPage() {
             {cargando ? 'Procesando...' : modo === 'login' ? 'Iniciar sesión' : modo === 'registro' ? 'Crear cuenta' : 'Enviar link de restablecimiento'}
           </button>
 
-          {/* Footer links */}
           <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.4)', textAlign: 'center', fontWeight: '300' }}>
             {modo === 'reset' ? (
               <button onClick={() => cambiarModo('login')} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '12px', fontFamily: 'Jost, sans-serif' }}>
