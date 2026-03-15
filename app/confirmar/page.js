@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '../components/CartContext'
 import { useAuth } from '../components/AuthContext'
@@ -27,6 +27,75 @@ export default function ConfirmarPage() {
   const [exito, setExito] = useState(false)
   const [error, setError] = useState(null)
 
+  // Pre-completar con datos del perfil y último pedido
+  useEffect(() => {
+    if (!user?.id) return
+
+    const cargarDatos = async () => {
+      // 1. Nombre y teléfono del perfil
+      const nombre = perfil?.nombre || ''
+      const telefono = perfil?.telefono || ''
+
+      // 2. Dirección del último pedido
+      let calle = perfil?.calle || ''
+      let altura = perfil?.altura || ''
+      let codigoPostal = perfil?.codigo_postal || ''
+      let localidad = perfil?.localidad || ''
+      let piso = perfil?.piso || ''
+
+      // Si no hay dirección guardada en el perfil, buscar en el último pedido
+      if (!calle) {
+        const { data: ultimoPedido } = await supabase
+          .from('pedidos')
+          .select('direccion, piso')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (ultimoPedido?.direccion) {
+          // Intentar parsear "Calle Altura, Piso, CP XXXX, Localidad"
+          const dir = ultimoPedido.direccion
+          const partes = dir.split(',').map(p => p.trim())
+
+          // Parte 0: "Calle Altura" → separar en calle y altura
+          const calleAltura = partes[0] || ''
+          const ultimoEspacio = calleAltura.lastIndexOf(' ')
+          if (ultimoEspacio > 0) {
+            calle = calleAltura.substring(0, ultimoEspacio)
+            altura = calleAltura.substring(ultimoEspacio + 1)
+          }
+
+          // Buscar CP y localidad en las partes restantes
+          partes.slice(1).forEach(parte => {
+            if (parte.startsWith('CP ')) {
+              codigoPostal = parte.replace('CP ', '')
+            } else if (!piso && ultimoPedido.piso && parte === ultimoPedido.piso) {
+              piso = parte
+            } else if (!localidad && !parte.startsWith('CP ')) {
+              localidad = parte
+            }
+          })
+
+          if (ultimoPedido.piso) piso = ultimoPedido.piso
+        }
+      }
+
+      setForm(prev => ({
+        ...prev,
+        nombre,
+        telefono,
+        calle,
+        altura,
+        codigoPostal,
+        localidad,
+        piso,
+      }))
+    }
+
+    cargarDatos()
+  }, [user, perfil])
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -48,6 +117,20 @@ export default function ConfirmarPage() {
     return d
   }
 
+  const guardarDireccionEnPerfil = async () => {
+    if (!user?.id) return
+    await supabase
+      .from('perfiles')
+      .update({
+        calle: form.calle,
+        altura: form.altura,
+        codigo_postal: form.codigoPostal,
+        localidad: form.localidad,
+        piso: form.piso || null,
+      })
+      .eq('id', user.id)
+  }
+
   const enviarEmailConfirmacion = async (emailDestino) => {
     try {
       await fetch('/api/enviar-confirmacion', {
@@ -64,7 +147,6 @@ export default function ConfirmarPage() {
       })
     } catch (err) {
       console.error('Error enviando email:', err)
-      // No bloqueamos el flujo si falla el email
     }
   }
 
@@ -79,6 +161,9 @@ export default function ConfirmarPage() {
     try {
       if (pagoMetodo === 'mercadopago') {
         setRedirigiendo(true)
+
+        // Guardar dirección en perfil para la próxima vez
+        await guardarDireccionEnPerfil()
 
         sessionStorage.setItem('pedidoPendiente', JSON.stringify({
           nombre: form.nombre,
@@ -127,7 +212,10 @@ export default function ConfirmarPage() {
 
       if (errorPedido) throw errorPedido
 
-      // Sumar puntos al perfil si está logueado
+      // Guardar dirección en perfil para la próxima vez
+      await guardarDireccionEnPerfil()
+
+      // Sumar puntos al perfil
       if (user?.id && totalPuntos > 0) {
         const { data: perfilData } = await supabase
           .from('perfiles')
@@ -143,10 +231,9 @@ export default function ConfirmarPage() {
         }
       }
 
-      // Enviar email de confirmación si hay email disponible
-      const emailDestino = user?.email ?? null
-      if (emailDestino) {
-        await enviarEmailConfirmacion(emailDestino)
+      // Enviar email de confirmación
+      if (user?.email) {
+        await enviarEmailConfirmacion(user.email)
       }
 
       vaciarCarrito()
