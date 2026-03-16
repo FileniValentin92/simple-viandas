@@ -11,9 +11,9 @@ export async function POST(request) {
     const preference = new Preference(client)
 
     const mpItems = items.map(item => ({
-      title: item.nombre,
-      quantity: item.cantidad,
-      unit_price: item.precioNum,
+      title: String(item.nombre),
+      quantity: Number(item.cantidad),
+      unit_price: parseFloat(item.precioNum),
       currency_id: 'ARS',
     }))
 
@@ -21,16 +21,8 @@ export async function POST(request) {
       body: {
         items: mpItems,
         payer: {
-          name: nombre,
-          phone: { number: telefono },
-        },
-        metadata: {
-          nombre,
-          telefono,
-          direccion,
-          piso,
-          comentarios,
-          items: JSON.stringify(items),
+          name: nombre || '',
+          phone: { number: telefono || '' },
         },
         back_urls: {
           success: `${process.env.NEXT_PUBLIC_BASE_URL}/pago-exitoso`,
@@ -43,8 +35,9 @@ export async function POST(request) {
     })
 
     return Response.json({ init_point: result.init_point })
+
   } catch (error) {
     console.error('MP error:', error)
-    return Response.json({ error: 'Error al crear preferencia de pago' }, { status: 500 })
+    return Response.json({ error: 'Error al crear preferencia de pago', detalle: error?.message }, { status: 500 })
   }
 }
