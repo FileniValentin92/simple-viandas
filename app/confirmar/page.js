@@ -12,14 +12,8 @@ export default function ConfirmarPage() {
   const { user, perfil } = useAuth()
 
   const [form, setForm] = useState({
-    nombre: '',
-    telefono: '',
-    calle: '',
-    altura: '',
-    codigoPostal: '',
-    localidad: '',
-    piso: '',
-    comentarios: '',
+    nombre: '', telefono: '', calle: '', altura: '',
+    codigoPostal: '', localidad: '', piso: '', comentarios: '',
   })
   const [pagoMetodo, setPagoMetodo] = useState('efectivo')
   const [enviando, setEnviando] = useState(false)
@@ -27,7 +21,6 @@ export default function ConfirmarPage() {
   const [exito, setExito] = useState(false)
   const [error, setError] = useState(null)
 
-  // Pre-completar con datos del perfil y último pedido
   useEffect(() => {
     if (!user?.id) return
     const cargarDatos = async () => {
@@ -41,22 +34,14 @@ export default function ConfirmarPage() {
 
       if (!calle) {
         const { data: ultimoPedido } = await supabase
-          .from('pedidos')
-          .select('direccion, piso')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-
+          .from('pedidos').select('direccion, piso')
+          .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
         if (ultimoPedido?.direccion) {
           const dir = ultimoPedido.direccion
           const partes = dir.split(',').map(p => p.trim())
           const calleAltura = partes[0] || ''
           const ultimoEspacio = calleAltura.lastIndexOf(' ')
-          if (ultimoEspacio > 0) {
-            calle = calleAltura.substring(0, ultimoEspacio)
-            altura = calleAltura.substring(ultimoEspacio + 1)
-          }
+          if (ultimoEspacio > 0) { calle = calleAltura.substring(0, ultimoEspacio); altura = calleAltura.substring(ultimoEspacio + 1) }
           partes.slice(1).forEach(parte => {
             if (parte.startsWith('CP ')) codigoPostal = parte.replace('CP ', '')
             else if (!localidad && !parte.startsWith('CP ')) localidad = parte
@@ -64,7 +49,6 @@ export default function ConfirmarPage() {
           if (ultimoPedido.piso) piso = ultimoPedido.piso
         }
       }
-
       setForm(prev => ({ ...prev, nombre, telefono, calle, altura, codigoPostal, localidad, piso }))
     }
     cargarDatos()
@@ -92,12 +76,22 @@ export default function ConfirmarPage() {
   const guardarDireccionEnPerfil = async () => {
     if (!user?.id) return
     await supabase.from('perfiles').update({
-      calle: form.calle,
-      altura: form.altura,
-      codigo_postal: form.codigoPostal,
-      localidad: form.localidad,
+      calle: form.calle, altura: form.altura,
+      codigo_postal: form.codigoPostal, localidad: form.localidad,
       piso: form.piso || null,
     }).eq('id', user.id)
+  }
+
+  const descontarStock = async () => {
+    try {
+      await fetch('/api/descontar-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+    } catch (err) {
+      console.error('Error descontando stock:', err)
+    }
   }
 
   const enviarEmailConfirmacion = async (emailDestino) => {
@@ -106,17 +100,11 @@ export default function ConfirmarPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nombre: form.nombre,
-          email: emailDestino,
-          items,
-          total: totalPrecio,
-          direccion: direccionCompleta(),
-          telefono: form.telefono,
+          nombre: form.nombre, email: emailDestino, items,
+          total: totalPrecio, direccion: direccionCompleta(), telefono: form.telefono,
         }),
       })
-    } catch (err) {
-      console.error('Error enviando email:', err)
-    }
+    } catch (err) { console.error('Error enviando email:', err) }
   }
 
   const handleConfirmar = async () => {
@@ -131,90 +119,61 @@ export default function ConfirmarPage() {
       if (pagoMetodo === 'mercadopago') {
         setRedirigiendo(true)
 
-        // 1. Guardar pedido en Supabase con estado pendiente ANTES de redirigir
         const { data: pedidoGuardado, error: errorPedido } = await supabase
-          .from('pedidos')
-          .insert([{
-            nombre: form.nombre,
-            telefono: form.telefono,
-            direccion: direccionCompleta(),
-            piso: form.piso || null,
-            comentarios: form.comentarios || null,
-            items,
-            total: totalPrecio,
-            puntos: totalPuntos,
-            estado: 'pendiente',
-            pago_metodo: 'mercadopago',
-            pago_estado: 'pendiente',
-            mp_payment_id: null,
+          .from('pedidos').insert([{
+            nombre: form.nombre, telefono: form.telefono,
+            direccion: direccionCompleta(), piso: form.piso || null,
+            comentarios: form.comentarios || null, items,
+            total: totalPrecio, puntos: totalPuntos,
+            estado: 'pendiente', pago_metodo: 'mercadopago',
+            pago_estado: 'pendiente', mp_payment_id: null,
             user_id: user?.id ?? null,
-          }])
-          .select()
-          .single()
+          }]).select().single()
 
         if (errorPedido) throw errorPedido
 
-        // 2. Guardar dirección en perfil
         await guardarDireccionEnPerfil()
+        await descontarStock()
 
-        // 3. Guardar ID del pedido en sessionStorage para actualizarlo al volver
         sessionStorage.setItem('pedidoMP', JSON.stringify({
           pedidoId: pedidoGuardado.id,
           puntosGanados: totalPuntos,
           user_id: user?.id ?? null,
           emailUsuario: user?.email ?? null,
-          nombre: form.nombre,
-          items,
-          total: totalPrecio,
-          direccion: direccionCompleta(),
-          telefono: form.telefono,
+          nombre: form.nombre, items, total: totalPrecio,
+          direccion: direccionCompleta(), telefono: form.telefono,
         }))
 
-        // 4. Crear preferencia y redirigir
         const res = await fetch('/api/mp-crear-preferencia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items, total: totalPrecio }),
         })
         const data = await res.json()
-        if (data.init_point) {
-          vaciarCarrito()
-          window.location.href = data.init_point
-        } else {
-          throw new Error('No se pudo crear la preferencia de pago')
-        }
+        if (data.init_point) { vaciarCarrito(); window.location.href = data.init_point }
+        else throw new Error('No se pudo crear la preferencia de pago')
         return
       }
 
       // Flujo efectivo
       const { error: errorPedido } = await supabase.from('pedidos').insert([{
-        nombre: form.nombre,
-        telefono: form.telefono,
-        direccion: direccionCompleta(),
-        piso: form.piso || null,
-        comentarios: form.comentarios || null,
-        items,
-        total: totalPrecio,
-        puntos: totalPuntos,
-        estado: 'pendiente',
-        pago_metodo: 'efectivo',
-        pago_estado: 'pendiente',
-        mp_payment_id: null,
+        nombre: form.nombre, telefono: form.telefono,
+        direccion: direccionCompleta(), piso: form.piso || null,
+        comentarios: form.comentarios || null, items,
+        total: totalPrecio, puntos: totalPuntos,
+        estado: 'pendiente', pago_metodo: 'efectivo',
+        pago_estado: 'pendiente', mp_payment_id: null,
         user_id: user?.id ?? null,
       }])
 
       if (errorPedido) throw errorPedido
 
       await guardarDireccionEnPerfil()
+      await descontarStock()
 
       if (user?.id && totalPuntos > 0) {
-        const { data: perfilData } = await supabase
-          .from('perfiles').select('puntos').eq('id', user.id).single()
-        if (perfilData) {
-          await supabase.from('perfiles')
-            .update({ puntos: (perfilData.puntos ?? 0) + totalPuntos })
-            .eq('id', user.id)
-        }
+        const { data: perfilData } = await supabase.from('perfiles').select('puntos').eq('id', user.id).single()
+        if (perfilData) await supabase.from('perfiles').update({ puntos: (perfilData.puntos ?? 0) + totalPuntos }).eq('id', user.id)
       }
 
       if (user?.email) await enviarEmailConfirmacion(user.email)
@@ -277,7 +236,6 @@ export default function ConfirmarPage() {
         <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>Último paso</p>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--black)', fontWeight: '400', marginBottom: '40px' }}>Confirmá tu pedido</h1>
 
-        {/* Resumen */}
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '20px', fontWeight: '300' }}>Tu pedido</p>
           {items.map((item, i) => (
@@ -297,7 +255,6 @@ export default function ConfirmarPage() {
           </div>
         </div>
 
-        {/* Datos de entrega */}
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '24px', fontWeight: '300' }}>Datos de entrega</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -316,7 +273,6 @@ export default function ConfirmarPage() {
           <div><label style={labelStyle}>Comentarios (opcional)</label><textarea name="comentarios" value={form.comentarios} onChange={handleChange} placeholder="Sin sal, alergia a..., etc." rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
         </div>
 
-        {/* Método de pago */}
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '20px', fontWeight: '300' }}>Método de pago</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -330,7 +286,7 @@ export default function ConfirmarPage() {
 
         {error && <p style={{ color: '#e53e3e', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
 
-        <button onClick={handleConfirmar} disabled={enviando} style={{ width: '100%', background: enviando ? '#999' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '20px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: enviando ? 'not-allowed' : 'pointer', transition: 'background 0.2s ease' }}>
+        <button onClick={handleConfirmar} disabled={enviando} style={{ width: '100%', background: enviando ? '#999' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '20px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: enviando ? 'not-allowed' : 'pointer' }}>
           {enviando ? 'Procesando...' : pagoMetodo === 'mercadopago' ? 'Pagar con MercadoPago →' : 'Confirmar pedido'}
         </button>
         <button onClick={() => router.back()} style={{ width: '100%', marginTop: '12px', background: 'transparent', border: 'none', color: '#999', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer', fontFamily: 'Jost, sans-serif' }}>← Volver al carrito</button>
