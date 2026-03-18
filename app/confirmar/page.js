@@ -30,20 +30,15 @@ export default function ConfirmarPage() {
   // Pre-completar con datos del perfil y último pedido
   useEffect(() => {
     if (!user?.id) return
-
     const cargarDatos = async () => {
-      // 1. Nombre y teléfono del perfil
       const nombre = perfil?.nombre || ''
       const telefono = perfil?.telefono || ''
-
-      // 2. Dirección del último pedido
       let calle = perfil?.calle || ''
       let altura = perfil?.altura || ''
       let codigoPostal = perfil?.codigo_postal || ''
       let localidad = perfil?.localidad || ''
       let piso = perfil?.piso || ''
 
-      // Si no hay dirección guardada en el perfil, buscar en el último pedido
       if (!calle) {
         const { data: ultimoPedido } = await supabase
           .from('pedidos')
@@ -54,51 +49,28 @@ export default function ConfirmarPage() {
           .single()
 
         if (ultimoPedido?.direccion) {
-          // Intentar parsear "Calle Altura, Piso, CP XXXX, Localidad"
           const dir = ultimoPedido.direccion
           const partes = dir.split(',').map(p => p.trim())
-
-          // Parte 0: "Calle Altura" → separar en calle y altura
           const calleAltura = partes[0] || ''
           const ultimoEspacio = calleAltura.lastIndexOf(' ')
           if (ultimoEspacio > 0) {
             calle = calleAltura.substring(0, ultimoEspacio)
             altura = calleAltura.substring(ultimoEspacio + 1)
           }
-
-          // Buscar CP y localidad en las partes restantes
           partes.slice(1).forEach(parte => {
-            if (parte.startsWith('CP ')) {
-              codigoPostal = parte.replace('CP ', '')
-            } else if (!piso && ultimoPedido.piso && parte === ultimoPedido.piso) {
-              piso = parte
-            } else if (!localidad && !parte.startsWith('CP ')) {
-              localidad = parte
-            }
+            if (parte.startsWith('CP ')) codigoPostal = parte.replace('CP ', '')
+            else if (!localidad && !parte.startsWith('CP ')) localidad = parte
           })
-
           if (ultimoPedido.piso) piso = ultimoPedido.piso
         }
       }
 
-      setForm(prev => ({
-        ...prev,
-        nombre,
-        telefono,
-        calle,
-        altura,
-        codigoPostal,
-        localidad,
-        piso,
-      }))
+      setForm(prev => ({ ...prev, nombre, telefono, calle, altura, codigoPostal, localidad, piso }))
     }
-
     cargarDatos()
   }, [user, perfil])
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
   const validar = () => {
     if (!form.nombre.trim()) return 'El nombre es obligatorio'
@@ -119,16 +91,13 @@ export default function ConfirmarPage() {
 
   const guardarDireccionEnPerfil = async () => {
     if (!user?.id) return
-    await supabase
-      .from('perfiles')
-      .update({
-        calle: form.calle,
-        altura: form.altura,
-        codigo_postal: form.codigoPostal,
-        localidad: form.localidad,
-        piso: form.piso || null,
-      })
-      .eq('id', user.id)
+    await supabase.from('perfiles').update({
+      calle: form.calle,
+      altura: form.altura,
+      codigo_postal: form.codigoPostal,
+      localidad: form.localidad,
+      piso: form.piso || null,
+    }).eq('id', user.id)
   }
 
   const enviarEmailConfirmacion = async (emailDestino) => {
@@ -162,23 +131,46 @@ export default function ConfirmarPage() {
       if (pagoMetodo === 'mercadopago') {
         setRedirigiendo(true)
 
-        // Guardar dirección en perfil para la próxima vez
+        // 1. Guardar pedido en Supabase con estado pendiente ANTES de redirigir
+        const { data: pedidoGuardado, error: errorPedido } = await supabase
+          .from('pedidos')
+          .insert([{
+            nombre: form.nombre,
+            telefono: form.telefono,
+            direccion: direccionCompleta(),
+            piso: form.piso || null,
+            comentarios: form.comentarios || null,
+            items,
+            total: totalPrecio,
+            puntos: totalPuntos,
+            estado: 'pendiente',
+            pago_metodo: 'mercadopago',
+            pago_estado: 'pendiente',
+            mp_payment_id: null,
+            user_id: user?.id ?? null,
+          }])
+          .select()
+          .single()
+
+        if (errorPedido) throw errorPedido
+
+        // 2. Guardar dirección en perfil
         await guardarDireccionEnPerfil()
 
-        sessionStorage.setItem('pedidoPendiente', JSON.stringify({
-          nombre: form.nombre,
-          telefono: form.telefono,
-          direccion: direccionCompleta(),
-          piso: form.piso,
-          comentarios: form.comentarios,
-          items,
-          total: totalPrecio,
+        // 3. Guardar ID del pedido en sessionStorage para actualizarlo al volver
+        sessionStorage.setItem('pedidoMP', JSON.stringify({
+          pedidoId: pedidoGuardado.id,
           puntosGanados: totalPuntos,
-          metodoPago: 'mercadopago',
           user_id: user?.id ?? null,
           emailUsuario: user?.email ?? null,
+          nombre: form.nombre,
+          items,
+          total: totalPrecio,
+          direccion: direccionCompleta(),
+          telefono: form.telefono,
         }))
 
+        // 4. Crear preferencia y redirigir
         const res = await fetch('/api/mp-crear-preferencia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -186,6 +178,7 @@ export default function ConfirmarPage() {
         })
         const data = await res.json()
         if (data.init_point) {
+          vaciarCarrito()
           window.location.href = data.init_point
         } else {
           throw new Error('No se pudo crear la preferencia de pago')
@@ -212,29 +205,19 @@ export default function ConfirmarPage() {
 
       if (errorPedido) throw errorPedido
 
-      // Guardar dirección en perfil para la próxima vez
       await guardarDireccionEnPerfil()
 
-      // Sumar puntos al perfil
       if (user?.id && totalPuntos > 0) {
         const { data: perfilData } = await supabase
-          .from('perfiles')
-          .select('puntos')
-          .eq('id', user.id)
-          .single()
-
+          .from('perfiles').select('puntos').eq('id', user.id).single()
         if (perfilData) {
-          await supabase
-            .from('perfiles')
+          await supabase.from('perfiles')
             .update({ puntos: (perfilData.puntos ?? 0) + totalPuntos })
             .eq('id', user.id)
         }
       }
 
-      // Enviar email de confirmación
-      if (user?.email) {
-        await enviarEmailConfirmacion(user.email)
-      }
+      if (user?.email) await enviarEmailConfirmacion(user.email)
 
       vaciarCarrito()
       setExito(true)
@@ -242,12 +225,12 @@ export default function ConfirmarPage() {
     } catch (err) {
       console.error('Error al confirmar pedido:', err)
       setError('Hubo un problema al confirmar el pedido. Intentá de nuevo.')
+      setRedirigiendo(false)
     } finally {
       setEnviando(false)
     }
   }
 
-  // ── Pantalla de éxito ──────────────────────────────────────────────────────
   if (exito) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', textAlign: 'center' }}>
@@ -255,24 +238,10 @@ export default function ConfirmarPage() {
           <div style={{ fontSize: '48px', marginBottom: '24px' }}>✅</div>
           <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>Pedido recibido</p>
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>¡Gracias por tu pedido!</h1>
-          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '8px' }}>
-            Te avisamos por WhatsApp cuando esté en camino.
-          </p>
-          {user?.email && (
-            <p style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>
-              📧 Te enviamos una confirmación a {user.email}
-            </p>
-          )}
-          {user && totalPuntos > 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '500', marginTop: '12px' }}>
-              +{totalPuntos} puntos sumados a tu cuenta 🎉
-            </p>
-          )}
-          {!user && totalPuntos > 0 && (
-            <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-              Iniciá sesión para acumular puntos en tu próximo pedido
-            </p>
-          )}
+          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '8px' }}>Te avisamos por WhatsApp cuando esté en camino.</p>
+          {user?.email && <p style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>📧 Te enviamos una confirmación a {user.email}</p>}
+          {user && totalPuntos > 0 && <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '500', marginTop: '12px' }}>+{totalPuntos} puntos sumados a tu cuenta 🎉</p>}
+          {!user && totalPuntos > 0 && <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>Iniciá sesión para acumular puntos en tu próximo pedido</p>}
           <button onClick={() => router.push('/')} style={{ marginTop: '32px', width: '100%', background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '18px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
             Volver al inicio
           </button>
@@ -281,7 +250,6 @@ export default function ConfirmarPage() {
     )
   }
 
-  // ── Redirigiendo a MP ──────────────────────────────────────────────────────
   if (redirigiendo) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 24px' }}>
@@ -291,49 +259,25 @@ export default function ConfirmarPage() {
     )
   }
 
-  // ── Carrito vacío ──────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 24px' }}>
         <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)', marginBottom: '24px' }}>Tu carrito está vacío</p>
-        <button onClick={() => router.push('/menu')} style={{ background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '16px 40px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
-          Ver menú
-        </button>
+        <button onClick={() => router.push('/menu')} style={{ background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '16px 40px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>Ver menú</button>
       </div>
     )
   }
 
-  // ── Formulario principal ───────────────────────────────────────────────────
-  const inputStyle = {
-    width: '100%',
-    border: '1px solid var(--cream-deep)',
-    background: 'var(--white)',
-    padding: '14px 16px',
-    fontSize: '14px',
-    fontFamily: 'Jost, sans-serif',
-    color: 'var(--black)',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '9px',
-    letterSpacing: '2px',
-    textTransform: 'uppercase',
-    color: 'var(--olive-mid)',
-    marginBottom: '8px',
-    fontWeight: '300',
-  }
+  const inputStyle = { width: '100%', border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '14px 16px', fontSize: '14px', fontFamily: 'Jost, sans-serif', color: 'var(--black)', outline: 'none', boxSizing: 'border-box' }
+  const labelStyle = { display: 'block', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '8px', fontWeight: '300' }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '60px 24px 80px' }}>
       <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-
         <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px' }}>Último paso</p>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--black)', fontWeight: '400', marginBottom: '40px' }}>Confirmá tu pedido</h1>
 
-        {/* Resumen del carrito */}
+        {/* Resumen */}
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '20px', fontWeight: '300' }}>Tu pedido</p>
           {items.map((item, i) => (
@@ -356,49 +300,20 @@ export default function ConfirmarPage() {
         {/* Datos de entrega */}
         <div style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '28px', marginBottom: '32px' }}>
           <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive-mid)', marginBottom: '24px', fontWeight: '300' }}>Datos de entrega</p>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={labelStyle}>Nombre *</label>
-              <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Tu nombre" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Teléfono *</label>
-              <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="" style={inputStyle} />
-            </div>
+            <div><label style={labelStyle}>Nombre *</label><input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Tu nombre" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Teléfono *</label><input name="telefono" value={form.telefono} onChange={handleChange} placeholder="" style={inputStyle} /></div>
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={labelStyle}>Calle *</label>
-              <input name="calle" value={form.calle} onChange={handleChange} placeholder="Nombre de la calle" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Altura *</label>
-              <input name="altura" value={form.altura} onChange={handleChange} placeholder="1234" style={inputStyle} />
-            </div>
+            <div><label style={labelStyle}>Calle *</label><input name="calle" value={form.calle} onChange={handleChange} placeholder="Nombre de la calle" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Altura *</label><input name="altura" value={form.altura} onChange={handleChange} placeholder="1234" style={inputStyle} /></div>
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={labelStyle}>Código postal *</label>
-              <input name="codigoPostal" value={form.codigoPostal} onChange={handleChange} placeholder="1900" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Localidad *</label>
-              <input name="localidad" value={form.localidad} onChange={handleChange} placeholder="" style={inputStyle} />
-            </div>
+            <div><label style={labelStyle}>Código postal *</label><input name="codigoPostal" value={form.codigoPostal} onChange={handleChange} placeholder="1900" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Localidad *</label><input name="localidad" value={form.localidad} onChange={handleChange} placeholder="" style={inputStyle} /></div>
           </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Piso / Depto (opcional)</label>
-            <input name="piso" value={form.piso} onChange={handleChange} placeholder="3° B" style={inputStyle} />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Comentarios (opcional)</label>
-            <textarea name="comentarios" value={form.comentarios} onChange={handleChange} placeholder="Sin sal, alergia a..., etc." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
+          <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Piso / Depto (opcional)</label><input name="piso" value={form.piso} onChange={handleChange} placeholder="3° B" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Comentarios (opcional)</label><textarea name="comentarios" value={form.comentarios} onChange={handleChange} placeholder="Sin sal, alergia a..., etc." rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
         </div>
 
         {/* Método de pago */}
@@ -407,8 +322,7 @@ export default function ConfirmarPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {[{ id: 'efectivo', label: 'Efectivo', icon: '💵' }, { id: 'mercadopago', label: 'MercadoPago', icon: '💳' }].map(({ id, label, icon }) => (
               <button key={id} onClick={() => setPagoMetodo(id)} style={{ border: pagoMetodo === id ? '2px solid var(--black)' : '1px solid var(--cream-deep)', background: pagoMetodo === id ? 'var(--black)' : 'var(--white)', color: pagoMetodo === id ? 'var(--cream)' : 'var(--black)', padding: '20px 16px', cursor: 'pointer', fontFamily: 'Jost, sans-serif', fontSize: '12px', letterSpacing: '1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>
-                <span style={{ fontSize: '24px' }}>{icon}</span>
-                {label}
+                <span style={{ fontSize: '24px' }}>{icon}</span>{label}
               </button>
             ))}
           </div>
@@ -419,11 +333,7 @@ export default function ConfirmarPage() {
         <button onClick={handleConfirmar} disabled={enviando} style={{ width: '100%', background: enviando ? '#999' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '20px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: enviando ? 'not-allowed' : 'pointer', transition: 'background 0.2s ease' }}>
           {enviando ? 'Procesando...' : pagoMetodo === 'mercadopago' ? 'Pagar con MercadoPago →' : 'Confirmar pedido'}
         </button>
-
-        <button onClick={() => router.back()} style={{ width: '100%', marginTop: '12px', background: 'transparent', border: 'none', color: '#999', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer', fontFamily: 'Jost, sans-serif' }}>
-          ← Volver al carrito
-        </button>
-
+        <button onClick={() => router.back()} style={{ width: '100%', marginTop: '12px', background: 'transparent', border: 'none', color: '#999', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer', fontFamily: 'Jost, sans-serif' }}>← Volver al carrito</button>
       </div>
     </div>
   )

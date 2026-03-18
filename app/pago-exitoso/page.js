@@ -7,42 +7,36 @@ import Link from 'next/link'
 
 function PagoExitosoContent() {
   const searchParams = useSearchParams()
-  const [guardado, setGuardado] = useState(false)
+  const [procesado, setProcesado] = useState(false)
   const procesando = useRef(false)
 
   useEffect(() => {
-    const guardarPedido = async () => {
+    const actualizarPedido = async () => {
       if (procesando.current) return
       procesando.current = true
 
       const paymentId = searchParams.get('payment_id')
       const status = searchParams.get('status')
+
       if (status !== 'approved' || !paymentId) return
 
-      const datosStr = sessionStorage.getItem('pedidoPendiente')
+      // Leer datos guardados antes de redirigir a MP
+      const datosStr = sessionStorage.getItem('pedidoMP')
       if (!datosStr) return
 
       const datos = JSON.parse(datosStr)
 
-      // 1. Insertar pedido en Supabase
-      const { error } = await supabase.from('pedidos').insert([{
-        nombre: datos.nombre,
-        telefono: datos.telefono,
-        direccion: datos.direccion,
-        piso: datos.piso || null,
-        comentarios: datos.comentarios || null,
-        items: datos.items,
-        total: datos.total,
-        puntos: datos.puntosGanados ?? 0,
-        estado: 'pendiente',
-        pago_metodo: 'mercadopago',
-        pago_estado: 'pagado',
-        mp_payment_id: paymentId,
-        user_id: datos.user_id ?? null,
-      }])
+      // 1. Actualizar el pedido existente con el payment_id y marcar como pagado
+      const { error: errorUpdate } = await supabase
+        .from('pedidos')
+        .update({
+          pago_estado: 'pagado',
+          mp_payment_id: paymentId,
+        })
+        .eq('id', datos.pedidoId)
 
-      if (error) {
-        console.error('Error guardando pedido MP:', error)
+      if (errorUpdate) {
+        console.error('Error actualizando pedido:', errorUpdate)
         return
       }
 
@@ -62,7 +56,7 @@ function PagoExitosoContent() {
         }
       }
 
-      // 3. Enviar email de confirmación si hay email
+      // 3. Enviar email de confirmación
       if (datos.emailUsuario) {
         try {
           await fetch('/api/enviar-confirmacion', {
@@ -82,11 +76,11 @@ function PagoExitosoContent() {
         }
       }
 
-      sessionStorage.removeItem('pedidoPendiente')
-      setGuardado(true)
+      sessionStorage.removeItem('pedidoMP')
+      setProcesado(true)
     }
 
-    guardarPedido()
+    actualizarPedido()
   }, [searchParams])
 
   return (
@@ -101,11 +95,7 @@ function PagoExitosoContent() {
       <p style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: '300', marginBottom: '40px' }}>
         Nos comunicaremos por WhatsApp para coordinar la entrega.
       </p>
-      <Link href="/menu" style={{
-        display: 'inline-block', background: 'var(--cream)', color: 'var(--black)',
-        padding: '14px 32px', fontSize: '9px', letterSpacing: '3px',
-        textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none',
-      }}>
+      <Link href="/menu" style={{ display: 'inline-block', background: 'var(--cream)', color: 'var(--black)', padding: '14px 32px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
         Seguir comprando
       </Link>
     </div>
@@ -114,11 +104,7 @@ function PagoExitosoContent() {
 
 export default function PagoExitosoPage() {
   return (
-    <div style={{
-      minHeight: '100vh', background: 'var(--black)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Jost, sans-serif', padding: '40px 20px',
-    }}>
+    <div style={{ minHeight: '100vh', background: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Jost, sans-serif', padding: '40px 20px' }}>
       <Suspense fallback={<p style={{ color: 'var(--cream)' }}>Verificando pago...</p>}>
         <PagoExitosoContent />
       </Suspense>
