@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Hero() {
   return (
     <section style={{
@@ -6,15 +8,12 @@ export default function Hero() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Fondo degradado */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: 'radial-gradient(ellipse 80% 60% at 50% 110%, rgba(74,85,48,0.4) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
-
-      {/* Contenido */}
       <div style={{ position: 'relative', maxWidth: '800px' }}>
         <p style={{
           fontSize: '10px',
@@ -27,7 +26,6 @@ export default function Hero() {
         }}>
           Viandas al vacío · Sin conservantes · Lista en 10 minutos
         </p>
-
         <h1 className="hero-titulo" style={{
           fontFamily: 'Playfair Display, serif',
           color: 'var(--cream)',
@@ -38,7 +36,6 @@ export default function Hero() {
           Comida real,<br />
           <em>lista en<br />10 minutos.</em>
         </h1>
-
         <p style={{
           fontSize: '15px',
           color: 'rgba(247,243,236,0.5)',
@@ -50,12 +47,10 @@ export default function Hero() {
           Viandas envasadas al vacío. Solo agua hirviendo, sin ensuciar nada.
           Comida casera de verdad, cuando vos querés.
         </p>
-
         <div className="hero-botones">
-          <a href="/menu" style={{
+          <Link href="/menu" style={{
             background: 'var(--cream)',
             color: 'var(--black)',
-            border: 'none',
             padding: '16px 40px',
             fontSize: '11px',
             letterSpacing: '3px',
@@ -67,9 +62,8 @@ export default function Hero() {
             display: 'inline-block',
           }}>
             Ver el menú
-          </a>
-
-          <button style={{
+          </Link>
+          <Link href="/packs" style={{
             background: 'transparent',
             color: 'var(--cream)',
             border: '1px solid rgba(247,243,236,0.3)',
@@ -80,9 +74,11 @@ export default function Hero() {
             fontFamily: 'Jost, sans-serif',
             fontWeight: '300',
             cursor: 'pointer',
+            textDecoration: 'none',
+            display: 'inline-block',
           }}>
             Armar pack
-          </button>
+          </Link>
         </div>
       </div>
     </section>

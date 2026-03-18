@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const ADMIN_PASSWORD = 'simple2026'
@@ -30,7 +30,6 @@ export default function AdminPage() {
   const [errorPass, setErrorPass] = useState(false)
   const [vistaActiva, setVistaActiva] = useState('pedidos')
 
-  // Pedidos
   const [pedidos, setPedidos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [pedidoAbierto, setPedidoAbierto] = useState(null)
@@ -38,17 +37,14 @@ export default function AdminPage() {
   const [confirmandoBorrar, setConfirmandoBorrar] = useState(false)
   const [borrando, setBorrando] = useState(false)
 
-  // Stock
   const [stock, setStock] = useState([])
   const [stockEditando, setStockEditando] = useState({})
   const [stockGuardando, setStockGuardando] = useState(null)
 
-  // Reportes
   const [periodo, setPeriodo] = useState('semana')
   const [reporte, setReporte] = useState(null)
   const [cargandoReporte, setCargandoReporte] = useState(false)
 
-  // Cocina
   const [cantidadesCocina, setCantidadesCocina] = useState({})
   const [notasCocina, setNotasCocina] = useState({})
   const [vendidosSemana, setVendidosSemana] = useState({})
@@ -81,32 +77,23 @@ export default function AdminPage() {
       const res = await fetch(`/api/reportes?periodo=${p}`)
       const data = await res.json()
       setReporte(data)
-
-      // También usamos los datos de semana para cocina
       if (p === 'semana') {
         const mapa = {}
         data.ranking?.forEach(item => { mapa[item.nombre] = item.cantidad })
         setVendidosSemana(mapa)
       }
-    } catch (err) {
-      console.error('Error cargando reporte:', err)
-    }
+    } catch (err) { console.error('Error cargando reporte:', err) }
     setCargandoReporte(false)
   }
 
   useEffect(() => {
-    if (logueado) {
-      cargarPedidos()
-      cargarStock()
-      cargarReporte('semana')
-    }
+    if (logueado) { cargarPedidos(); cargarStock(); cargarReporte('semana') }
   }, [logueado])
 
   useEffect(() => {
     if (logueado && vistaActiva === 'reportes') cargarReporte(periodo)
   }, [periodo, vistaActiva])
 
-  // ── Pedidos ──
   const cambiarEstado = async (id, nuevoEstado) => {
     await supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id)
     setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p))
@@ -126,7 +113,6 @@ export default function AdminPage() {
     setBorrando(false)
   }
 
-  // ── Stock ──
   const guardarStock = async (item) => {
     setStockGuardando(item.id)
     const nuevaCantidad = parseInt(stockEditando[item.id]) || 0
@@ -135,27 +121,81 @@ export default function AdminPage() {
     setStockGuardando(null)
   }
 
-  // ── Exportar Excel (cocina) ──
-  const exportarCocina = () => {
-    const rows = [['Plato', 'Stock actual', 'Vendidos esta semana', 'Cantidad a producir', 'Notas']]
-    stock.forEach(item => {
-      const cantidad = cantidadesCocina[item.id] || 0
-      const nota = notasCocina[item.id] || ''
-      const vendidos = vendidosSemana[item.nombre] || 0
-      if (cantidad > 0) rows.push([item.nombre, item.cantidad, vendidos, cantidad, nota])
-    })
+  // ── Exportar PDF Cocina ──
+  const exportarCocina = async () => {
+    const filas = stock.filter(item => parseInt(cantidadesCocina[item.id]) > 0)
+    if (filas.length === 0) { alert('Ingresá al menos una cantidad antes de exportar.'); return }
 
-    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `pedido-cocina-${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+    script.onload = () => {
+      const { jsPDF } = window.jspdf
+      const doc = new jsPDF()
+      const fecha = new Date().toLocaleDateString('es-AR')
+
+      // Header
+      doc.setFillColor(26, 26, 26)
+      doc.rect(0, 0, 210, 30, 'F')
+      doc.setTextColor(247, 243, 236)
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SIMPLE', 14, 14)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(200, 169, 110)
+      doc.text('PEDIDO A COCINA', 14, 22)
+      doc.setTextColor(180, 180, 180)
+      doc.text(`Fecha: ${fecha}`, 150, 22)
+
+      // Encabezado tabla
+      let y = 44
+      doc.setFillColor(240, 240, 240)
+      doc.rect(14, y - 6, 182, 9, 'F')
+      doc.setTextColor(100, 100, 100)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text('VIANDA', 16, y)
+      doc.text('CANTIDAD', 138, y)
+      doc.text('NOTAS', 162, y)
+      y += 6
+
+      // Filas
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      filas.forEach((item, i) => {
+        const cantidad = parseInt(cantidadesCocina[item.id]) || 0
+        const nota = notasCocina[item.id] || ''
+        if (i % 2 === 0) {
+          doc.setFillColor(250, 250, 250)
+          doc.rect(14, y - 5, 182, 8, 'F')
+        }
+        doc.setTextColor(30, 30, 30)
+        doc.text(item.nombre.substring(0, 50), 16, y)
+        doc.setFont('helvetica', 'bold')
+        doc.text(String(cantidad), 142, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(100, 100, 100)
+        doc.text(nota.substring(0, 20), 162, y)
+        y += 9
+        if (y > 270) { doc.addPage(); y = 20 }
+      })
+
+      // Total
+      y += 4
+      doc.setDrawColor(200, 200, 200)
+      doc.line(14, y, 196, y)
+      y += 8
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Total a producir: ${totalCocina} viandas`, 16, y)
+
+      doc.save(`pedido-cocina-${fecha.replace(/\//g, '-')}.pdf`)
+    }
+    document.head.appendChild(script)
   }
 
-  // ── Exportar Excel (reportes) ──
+  // ── Exportar CSV Reportes ──
   const exportarReporte = () => {
     if (!reporte) return
     const rows = [['Plato', 'Unidades vendidas']]
@@ -164,7 +204,6 @@ export default function AdminPage() {
     rows.push(['Total viandas', reporte.totalViandas])
     rows.push(['Total pedidos', reporte.totalPedidos])
     rows.push(['Total recaudado', reporte.totalRecaudado])
-
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -175,7 +214,7 @@ export default function AdminPage() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Exportar Stock ──
+  // ── Exportar CSV Stock ──
   const exportarStock = () => {
     const rows = [['Plato', 'Categoría', 'Stock actual', 'Vendidos histórico', 'Estado']]
     stock.forEach(item => {
@@ -225,7 +264,7 @@ export default function AdminPage() {
     )
   }
 
-  const VISTAS = ['pedidos', 'stock', 'reportes', 'cocina']
+  const btnStyle = (active) => ({ background: active ? 'rgba(247,243,236,0.15)' : 'transparent', border: 'none', color: active ? 'var(--cream)' : 'rgba(247,243,236,0.4)', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', position: 'relative' })
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F5', fontFamily: 'Jost, sans-serif' }}>
@@ -238,8 +277,8 @@ export default function AdminPage() {
             <span style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginLeft: '16px' }}>Admin</span>
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
-            {VISTAS.map(vista => (
-              <button key={vista} onClick={() => setVistaActiva(vista)} style={{ background: vistaActiva === vista ? 'rgba(247,243,236,0.15)' : 'transparent', border: 'none', color: vistaActiva === vista ? 'var(--cream)' : 'rgba(247,243,236,0.4)', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', position: 'relative' }}>
+            {['pedidos', 'stock', 'reportes', 'cocina'].map(vista => (
+              <button key={vista} onClick={() => setVistaActiva(vista)} style={btnStyle(vistaActiva === vista)}>
                 {vista}
                 {vista === 'stock' && (alertasStock.length > 0 || sinStockItems.length > 0) && (
                   <span style={{ position: 'absolute', top: '6px', right: '8px', width: '6px', height: '6px', borderRadius: '50%', background: '#e74c3c' }} />
@@ -427,9 +466,7 @@ export default function AdminPage() {
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-              <button onClick={exportarStock} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>
-                ↓ Exportar Excel
-              </button>
+              <button onClick={exportarStock} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>↓ Exportar CSV</button>
             </div>
             <div style={{ background: '#fff', border: '1px solid #E0E0E0' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -455,9 +492,7 @@ export default function AdminPage() {
                           {critico && <span style={{ fontSize: '10px', color: '#721C24', marginLeft: '8px' }}>Sin stock</span>}
                           {bajo && <span style={{ fontSize: '10px', color: '#856404', marginLeft: '8px' }}>Stock bajo</span>}
                         </td>
-                        <td style={{ padding: '14px 16px', fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>
-                          {item.vendidos_total || 0}
-                        </td>
+                        <td style={{ padding: '14px 16px', fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>{item.vendidos_total || 0}</td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#999' }}>{item.alerta_minima} uds</td>
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -485,16 +520,11 @@ export default function AdminPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[{ id: 'hoy', label: 'Hoy' }, { id: 'semana', label: 'Esta semana' }, { id: 'mes', label: 'Este mes' }].map(p => (
-                  <button key={p.id} onClick={() => setPeriodo(p.id)} style={{ background: periodo === p.id ? 'var(--black)' : '#fff', color: periodo === p.id ? 'var(--cream)' : 'var(--black)', border: '1px solid #E0E0E0', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
-                    {p.label}
-                  </button>
+                  <button key={p.id} onClick={() => setPeriodo(p.id)} style={{ background: periodo === p.id ? 'var(--black)' : '#fff', color: periodo === p.id ? 'var(--cream)' : 'var(--black)', border: '1px solid #E0E0E0', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>{p.label}</button>
                 ))}
               </div>
-              <button onClick={exportarReporte} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>
-                ↓ Exportar Excel
-              </button>
+              <button onClick={exportarReporte} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>↓ Exportar CSV</button>
             </div>
-
             {cargandoReporte ? (
               <p style={{ color: '#999', fontSize: '13px' }}>Cargando reporte...</p>
             ) : reporte ? (
@@ -511,7 +541,6 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-
                 <div style={{ background: '#fff', border: '1px solid #E0E0E0' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -555,13 +584,12 @@ export default function AdminPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '4px' }}>Pedido a cocina</p>
-                <p style={{ fontSize: '13px', color: '#666', fontFamily: 'Jost, sans-serif' }}>Completá las cantidades a producir y exportá la lista.</p>
+                <p style={{ fontSize: '13px', color: '#666' }}>Completá las cantidades a producir y exportá el PDF.</p>
               </div>
-              <button onClick={exportarCocina} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>
-                ↓ Exportar Excel
+              <button onClick={exportarCocina} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', border: 'none', background: 'var(--black)', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--cream)' }}>
+                ↓ Descargar PDF
               </button>
             </div>
-
             <div style={{ background: '#fff', border: '1px solid #E0E0E0', marginBottom: '16px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -603,9 +631,8 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
-
             <div style={{ background: '#fff', border: '1px solid #E0E0E0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ fontSize: '13px', color: '#666', fontFamily: 'Jost, sans-serif' }}>Total a producir</p>
+              <p style={{ fontSize: '13px', color: '#666' }}>Total a producir</p>
               <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)' }}>{totalCocina} viandas</p>
             </div>
           </>
