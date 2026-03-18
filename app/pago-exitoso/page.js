@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState, useRef, Suspense } from 'react'
+import { useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
 import Link from 'next/link'
 
 function PagoExitosoContent() {
   const searchParams = useSearchParams()
-  const [procesado, setProcesado] = useState(false)
   const procesando = useRef(false)
 
   useEffect(() => {
@@ -20,64 +19,70 @@ function PagoExitosoContent() {
 
       if (status !== 'approved' || !paymentId) return
 
-      // Leer datos guardados antes de redirigir a MP
-      const datosStr = sessionStorage.getItem('pedidoMP')
-      if (!datosStr) return
-
-      const datos = JSON.parse(datosStr)
-
-      // 1. Actualizar el pedido existente con el payment_id y marcar como pagado
-      const { error: errorUpdate } = await supabase
+      // Buscar el pedido MP más reciente que esté pendiente de pago
+      // (el que se creó justo antes de redirigir a MP)
+      const { data: pedidos, error } = await supabase
         .from('pedidos')
-        .update({
-          pago_estado: 'pagado',
-          mp_payment_id: paymentId,
-        })
-        .eq('id', datos.pedidoId)
+        .select('id, puntos, user_id, nombre, telefono, direccion, items, total')
+        .eq('pago_metodo', 'mercadopago')
+        .eq('pago_estado', 'pendiente')
+        .is('mp_payment_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      if (errorUpdate) {
-        console.error('Error actualizando pedido:', errorUpdate)
+      if (error || !pedidos?.length) {
+        console.error('No se encontró el pedido:', error)
         return
       }
 
-      // 2. Sumar puntos al perfil si hay usuario logueado
-      if (datos.user_id && datos.puntosGanados > 0) {
+      const pedido = pedidos[0]
+
+      // 1. Actualizar el pedido con el payment_id y marcar como pagado
+      await supabase
+        .from('pedidos')
+        .update({ pago_estado: 'pagado', mp_payment_id: paymentId })
+        .eq('id', pedido.id)
+
+      // 2. Sumar puntos al perfil si hay usuario
+      if (pedido.user_id && pedido.puntos > 0) {
         const { data: perfil } = await supabase
           .from('perfiles')
           .select('puntos')
-          .eq('id', datos.user_id)
+          .eq('id', pedido.user_id)
           .single()
 
         if (perfil) {
           await supabase
             .from('perfiles')
-            .update({ puntos: (perfil.puntos ?? 0) + datos.puntosGanados })
-            .eq('id', datos.user_id)
+            .update({ puntos: (perfil.puntos ?? 0) + pedido.puntos })
+            .eq('id', pedido.user_id)
         }
       }
 
-      // 3. Enviar email de confirmación
-      if (datos.emailUsuario) {
-        try {
-          await fetch('/api/enviar-confirmacion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nombre: datos.nombre,
-              email: datos.emailUsuario,
-              items: datos.items,
-              total: datos.total,
-              direccion: datos.direccion,
-              telefono: datos.telefono,
-            }),
-          })
-        } catch (err) {
-          console.error('Error enviando email:', err)
+      // 3. Intentar enviar email si hay datos en sessionStorage
+      try {
+        const datosStr = sessionStorage.getItem('pedidoMP')
+        if (datosStr) {
+          const datos = JSON.parse(datosStr)
+          if (datos.emailUsuario) {
+            await fetch('/api/enviar-confirmacion', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nombre: pedido.nombre,
+                email: datos.emailUsuario,
+                items: pedido.items,
+                total: pedido.total,
+                direccion: pedido.direccion,
+                telefono: pedido.telefono,
+              }),
+            })
+          }
+          sessionStorage.removeItem('pedidoMP')
         }
+      } catch (err) {
+        console.error('Error enviando email:', err)
       }
-
-      sessionStorage.removeItem('pedidoMP')
-      setProcesado(true)
     }
 
     actualizarPedido()
