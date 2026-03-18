@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
 export async function POST(request) {
@@ -15,17 +15,22 @@ export async function POST(request) {
 
       const { data: stockActual, error: errorLectura } = await supabase
         .from('stock')
-        .select('cantidad')
+        .select('cantidad, vendidos_total')
         .eq('nombre', nombre)
         .single()
 
       if (errorLectura || !stockActual) continue
 
       const nuevaCantidad = Math.max(0, stockActual.cantidad - cantidad)
+      const nuevosVendidos = (stockActual.vendidos_total || 0) + cantidad
 
       await supabase
         .from('stock')
-        .update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() })
+        .update({
+          cantidad: nuevaCantidad,
+          vendidos_total: nuevosVendidos,
+          updated_at: new Date().toISOString(),
+        })
         .eq('nombre', nombre)
     }
 
