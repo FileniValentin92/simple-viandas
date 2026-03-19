@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="6" fill="#0E0E0C"/>
+  <!-- Escala del logo original (90x24) → 32x32, centrado -->
+  <!-- Factor escala: 32/90 = 0.355, offset Y: (32 - 24*0.355)/2 = 11.7 -->
+  <g transform="translate(1, 9) scale(0.333)">
+    <!-- Cuchillo izquierda -->
+    <circle cx="8" cy="5" r="4.5" stroke="#B89A5E" stroke-width="1.8" fill="none"/>
+    <line x1="8" y1="9.5" x2="8" y2="22" stroke="#B89A5E" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Arco sonrisa (plato) -->
+    <path d="M16 8 C30 18 60 18 74 8" stroke="#B89A5E" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <!-- Tenedor derecha -->
+    <line x1="79" y1="2" x2="79" y2="22" stroke="#B89A5E" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="76" y1="2" x2="76" y2="7" stroke="#B89A5E" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="82" y1="2" x2="82" y2="7" stroke="#B89A5E" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M76 7 C77 11 81 11 82 7" stroke="#B89A5E" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
