@@ -8,7 +8,7 @@ export default function ComoFunciona() {
   return (
     <section style={{ background: 'var(--cream)', padding: 'clamp(32px, 5vw, 56px) clamp(20px, 5vw, 80px)' }}>
       <div style={{ border: '1px solid var(--gold)', background: 'var(--black)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontFamily: 'Jost, sans-serif', fontWeight: '300', marginBottom: '12px' }}>
+        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontFamily: 'Jost, sans-serif', fontWeight: '700', marginBottom: '12px', display: 'inline-block', background: '#fff', border: '1px solid var(--gold)', padding: '6px 18px' }}>
           Simple de verdad
         </p>
         <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--cream)', fontWeight: '400', marginBottom: '48px' }}>
@@ -23,7 +23,7 @@ export default function ComoFunciona() {
               <p style={{ fontSize: '15px', color: 'var(--black)', fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '10px' }}>
                 {paso.titulo}
               </p>
-              <p style={{ fontSize: '13px', color: '#888', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.6' }}>
+              <p style={{ fontSize: '13px', color: 'var(--black)', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.6' }}>
                 {paso.desc}
               </p>
             </div>

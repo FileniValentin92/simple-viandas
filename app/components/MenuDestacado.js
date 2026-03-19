@@ -11,7 +11,7 @@ export default function MenuDestacado() {
   return (
     <section style={{ background: 'var(--black)', padding: 'clamp(32px, 5vw, 56px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
       <div style={{ border: '1px solid var(--gold)', background: 'var(--cream)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '1280px', margin: '0 auto' }}>
-        <p style={{ fontSize: '10px', letterSpacing: '5px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px', fontFamily: 'Jost, sans-serif' }}>
+        <p style={{ fontSize: '10px', letterSpacing: '5px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '700', marginBottom: '16px', fontFamily: 'Jost, sans-serif', display: 'inline-block', background: '#fff', border: '1px solid var(--gold)', padding: '6px 18px' }}>
           El menú
         </p>
         <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(32px, 4vw, 52px)', color: 'var(--black)', fontWeight: '400', marginBottom: '32px', lineHeight: '1.1' }}>
