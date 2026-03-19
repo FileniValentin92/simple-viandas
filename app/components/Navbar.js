@@ -34,24 +34,21 @@ export default function Navbar() {
         zIndex: 100,
       }} className="navbar">
 
-        {/* Logo */}
         <Link href="/" style={{ textDecoration: 'none' }}>
           <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: 'var(--cream)', fontWeight: '400', letterSpacing: '4px' }}>
             SIMPLE
           </span>
         </Link>
 
-        {/* Links desktop */}
         <div className="navbar-links" style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           <Link href="/menu" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7 }}>
             Menú
           </Link>
-          <Link href="/#packs" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7 }}>
+          <Link href="/packs" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7 }}>
             Packs
           </Link>
 
           {user ? (
-            /* Usuario logueado */
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <Link href="/perfil" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', textDecoration: 'none', fontWeight: '400', border: '1px solid rgba(184,154,94,0.4)', padding: '7px 14px' }}>
                 ✦ {nombreUsuario}
@@ -61,13 +58,11 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            /* Sin sesión */
             <Link href="/login" style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--gold)', textDecoration: 'none', fontWeight: '400', border: '1px solid rgba(184,154,94,0.4)', padding: '7px 14px' }}>
               Mi Perfil
             </Link>
           )}
 
-          {/* Carrito */}
           <button onClick={() => setAbierto(true)} style={{ background: 'transparent', border: '1px solid rgba(247,243,236,0.3)', color: 'var(--cream)', padding: '10px 20px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>🛒</span>
             <span>Carrito</span>
@@ -79,7 +74,6 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile: carrito + hamburger */}
         <div className="navbar-mobile-actions" style={{ display: 'none', alignItems: 'center', gap: '12px' }}>
           <button onClick={() => setAbierto(true)} style={{ background: 'transparent', border: '1px solid rgba(247,243,236,0.3)', color: 'var(--cream)', padding: '8px 14px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>🛒</span>
@@ -97,13 +91,12 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Menu mobile */}
       {menuAbierto && (
         <div style={{ position: 'fixed', top: '60px', left: 0, right: 0, background: 'var(--black)', zIndex: 99, padding: '24px 24px 32px', display: 'flex', flexDirection: 'column', gap: '0', borderTop: '1px solid rgba(247,243,236,0.1)' }}>
           <Link href="/menu" onClick={() => setMenuAbierto(false)} style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7, padding: '16px 0', borderBottom: '1px solid rgba(247,243,236,0.08)' }}>
             Menú
           </Link>
-          <Link href="/#packs" onClick={() => setMenuAbierto(false)} style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7, padding: '16px 0', borderBottom: '1px solid rgba(247,243,236,0.08)' }}>
+          <Link href="/packs" onClick={() => setMenuAbierto(false)} style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', textDecoration: 'none', fontWeight: '300', opacity: 0.7, padding: '16px 0', borderBottom: '1px solid rgba(247,243,236,0.08)' }}>
             Packs
           </Link>
           {user ? (
