@@ -38,10 +38,8 @@ export default function AdminPage() {
   const [borrando, setBorrando] = useState(false)
 
   const [stock, setStock] = useState([])
-  const [stockEditando, setStockEditando] = useState({})
-  const [stockGuardando, setStockGuardando] = useState(null)
-  const [stockAgregando, setStockAgregando] = useState({})
-  const [stockAgregandoGuardando, setStockAgregandoGuardando] = useState(null)
+  const [stockCambios, setStockCambios] = useState({})
+  const [aplicandoCambios, setAplicandoCambios] = useState(false)
 
   const [periodo, setPeriodo] = useState('semana')
   const [reporte, setReporte] = useState(null)
@@ -65,12 +63,7 @@ export default function AdminPage() {
 
   const cargarStock = async () => {
     const { data } = await supabase.from('stock').select('*').order('categoria').order('nombre')
-    if (data) {
-      setStock(data)
-      const edits = {}
-      data.forEach(s => { edits[s.id] = s.cantidad })
-      setStockEditando(edits)
-    }
+    if (data) setStock(data)
   }
 
   const cargarReporte = async (p) => {
@@ -115,39 +108,31 @@ export default function AdminPage() {
     setBorrando(false)
   }
 
-  const guardarStock = async (item) => {
-    setStockGuardando(item.id)
-    const nuevaCantidad = parseInt(stockEditando[item.id]) || 0
-    await supabase.from('stock').update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() }).eq('id', item.id)
-    setStock(prev => prev.map(s => s.id === item.id ? { ...s, cantidad: nuevaCantidad } : s))
-    setStockGuardando(null)
+  const aplicarCambiosStock = async () => {
+    const cambios = Object.entries(stockCambios).filter(([_, v]) => v !== '' && parseInt(v) !== 0)
+    if (cambios.length === 0) return
+    setAplicandoCambios(true)
+    for (const [id, valor] of cambios) {
+      const item = stock.find(s => s.id === id)
+      if (!item) continue
+      const delta = parseInt(valor) || 0
+      const nuevaCantidad = Math.max(0, item.cantidad + delta)
+      await supabase.from('stock').update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() }).eq('id', id)
+      setStock(prev => prev.map(s => s.id === id ? { ...s, cantidad: nuevaCantidad } : s))
+    }
+    setStockCambios({})
+    setAplicandoCambios(false)
   }
 
-  const agregarStock = async (item) => {
-    const suma = parseInt(stockAgregando[item.id]) || 0
-    if (suma <= 0) return
-    setStockAgregandoGuardando(item.id)
-    const nuevaCantidad = item.cantidad + suma
-    await supabase.from('stock').update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() }).eq('id', item.id)
-    setStock(prev => prev.map(s => s.id === item.id ? { ...s, cantidad: nuevaCantidad } : s))
-    setStockEditando(prev => ({ ...prev, [item.id]: nuevaCantidad }))
-    setStockAgregando(prev => ({ ...prev, [item.id]: '' }))
-    setStockAgregandoGuardando(null)
-  }
-
-  // ── Exportar PDF Cocina ──
   const exportarCocina = async () => {
     const filas = stock.filter(item => parseInt(cantidadesCocina[item.id]) > 0)
     if (filas.length === 0) { alert('Ingresá al menos una cantidad antes de exportar.'); return }
-
     const script = document.createElement('script')
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
     script.onload = () => {
       const { jsPDF } = window.jspdf
       const doc = new jsPDF()
       const fecha = new Date().toLocaleDateString('es-AR')
-
-      // Header
       doc.setFillColor(26, 26, 26)
       doc.rect(0, 0, 210, 30, 'F')
       doc.setTextColor(247, 243, 236)
@@ -160,8 +145,6 @@ export default function AdminPage() {
       doc.text('PEDIDO A COCINA', 14, 22)
       doc.setTextColor(180, 180, 180)
       doc.text(`Fecha: ${fecha}`, 150, 22)
-
-      // Encabezado tabla
       let y = 44
       doc.setFillColor(240, 240, 240)
       doc.rect(14, y - 6, 182, 9, 'F')
@@ -172,17 +155,12 @@ export default function AdminPage() {
       doc.text('CANTIDAD', 138, y)
       doc.text('NOTAS', 162, y)
       y += 6
-
-      // Filas
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       filas.forEach((item, i) => {
         const cantidad = parseInt(cantidadesCocina[item.id]) || 0
         const nota = notasCocina[item.id] || ''
-        if (i % 2 === 0) {
-          doc.setFillColor(250, 250, 250)
-          doc.rect(14, y - 5, 182, 8, 'F')
-        }
+        if (i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y - 5, 182, 8, 'F') }
         doc.setTextColor(30, 30, 30)
         doc.text(item.nombre.substring(0, 50), 16, y)
         doc.setFont('helvetica', 'bold')
@@ -193,8 +171,6 @@ export default function AdminPage() {
         y += 9
         if (y > 270) { doc.addPage(); y = 20 }
       })
-
-      // Total
       y += 4
       doc.setDrawColor(200, 200, 200)
       doc.line(14, y, 196, y)
@@ -203,32 +179,24 @@ export default function AdminPage() {
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(30, 30, 30)
       doc.text(`Total a producir: ${totalCocina} viandas`, 16, y)
-
       doc.save(`pedido-cocina-${fecha.replace(/\//g, '-')}.pdf`)
     }
     document.head.appendChild(script)
   }
 
-  // ── Exportar CSV Reportes ──
   const exportarReporte = () => {
     if (!reporte) return
     const rows = [['Plato', 'Unidades vendidas']]
     reporte.ranking?.forEach(item => rows.push([item.nombre, item.cantidad]))
-    rows.push(['', ''])
-    rows.push(['Total viandas', reporte.totalViandas])
-    rows.push(['Total pedidos', reporte.totalPedidos])
-    rows.push(['Total recaudado', reporte.totalRecaudado])
+    rows.push(['', ''], ['Total viandas', reporte.totalViandas], ['Total pedidos', reporte.totalPedidos], ['Total recaudado', reporte.totalRecaudado])
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
+    const a = document.createElement('a'); a.href = url
     a.download = `reporte-ventas-${periodo}-${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    a.click(); URL.revokeObjectURL(url)
   }
 
-  // ── Exportar CSV Stock ──
   const exportarStock = () => {
     const rows = [['Plato', 'Categoría', 'Stock actual', 'Vendidos histórico', 'Estado']]
     stock.forEach(item => {
@@ -238,14 +206,13 @@ export default function AdminPage() {
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
+    const a = document.createElement('a'); a.href = url
     a.download = `stock-${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    a.click(); URL.revokeObjectURL(url)
   }
 
   const totalCocina = Object.values(cantidadesCocina).reduce((acc, v) => acc + (parseInt(v) || 0), 0)
+  const hayCambiosStock = Object.values(stockCambios).some(v => v !== '' && parseInt(v) !== 0)
 
   const formatFecha = (str) => {
     const d = new Date(str)
@@ -278,12 +245,11 @@ export default function AdminPage() {
     )
   }
 
-  const btnStyle = (active) => ({ background: active ? 'rgba(247,243,236,0.15)' : 'transparent', border: 'none', color: active ? 'var(--cream)' : 'rgba(247,243,236,0.4)', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', position: 'relative' })
+  const btnVista = (active) => ({ background: active ? 'rgba(247,243,236,0.15)' : 'transparent', border: 'none', color: active ? 'var(--cream)' : 'rgba(247,243,236,0.4)', padding: '8px 16px', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', position: 'relative' })
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F5', fontFamily: 'Jost, sans-serif' }}>
 
-      {/* Header */}
       <div style={{ background: 'var(--black)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           <div>
@@ -292,7 +258,7 @@ export default function AdminPage() {
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             {['pedidos', 'stock', 'reportes', 'cocina'].map(vista => (
-              <button key={vista} onClick={() => setVistaActiva(vista)} style={btnStyle(vistaActiva === vista)}>
+              <button key={vista} onClick={() => setVistaActiva(vista)} style={btnVista(vistaActiva === vista)}>
                 {vista}
                 {vista === 'stock' && (alertasStock.length > 0 || sinStockItems.length > 0) && (
                   <span style={{ position: 'absolute', top: '6px', right: '8px', width: '6px', height: '6px', borderRadius: '50%', background: '#e74c3c' }} />
@@ -486,7 +452,7 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                    {['Plato', 'Categoría', 'Stock actual', 'Vendidos (histórico)', 'Alerta mínima', 'Agregar', 'Setear exacto'].map(h => (
+                    {['Plato', 'Categoría', 'Stock actual', 'Vendidos (histórico)', 'Alerta mínima', 'Ajuste (+/-)'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '400', textAlign: 'left' }}>{h}</th>
                     ))}
                   </tr>
@@ -495,6 +461,8 @@ export default function AdminPage() {
                   {stock.map(item => {
                     const critico = item.cantidad === 0
                     const bajo = item.cantidad > 0 && item.cantidad <= item.alerta_minima
+                    const cambio = parseInt(stockCambios[item.id]) || 0
+                    const preview = item.cantidad + cambio
                     return (
                       <tr key={item.id} style={{ borderBottom: '1px solid #F0F0F0', background: critico ? '#FFF5F5' : bajo ? '#FFFDF0' : '#fff' }}>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: 'var(--black)' }}>{item.nombre}</td>
@@ -503,39 +471,44 @@ export default function AdminPage() {
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: critico ? '#721C24' : bajo ? '#856404' : 'var(--black)' }}>{item.cantidad}</span>
-                          {critico && <span style={{ fontSize: '10px', color: '#721C24', marginLeft: '8px' }}>Sin stock</span>}
-                          {bajo && <span style={{ fontSize: '10px', color: '#856404', marginLeft: '8px' }}>Stock bajo</span>}
+                          {stockCambios[item.id] && cambio !== 0 && (
+                            <span style={{ fontSize: '12px', color: cambio > 0 ? '#155724' : '#721C24', marginLeft: '8px' }}>
+                              → {Math.max(0, preview)}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '14px 16px', fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>{item.vendidos_total || 0}</td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#999' }}>{item.alerta_minima} uds</td>
                         <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input type="number" min="1" value={stockAgregando[item.id] || ''}
-                              onChange={e => setStockAgregando(prev => ({ ...prev, [item.id]: e.target.value }))}
-                              placeholder="+10"
-                              style={{ width: '72px', padding: '6px 10px', border: '1px solid #E0E0E0', fontSize: '13px', fontFamily: 'Jost, sans-serif', textAlign: 'center' }} />
-                            <button onClick={() => agregarStock(item)} disabled={stockAgregandoGuardando === item.id}
-                              style={{ padding: '6px 14px', border: 'none', background: '#D4EDDA', color: '#155724', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
-                              {stockAgregandoGuardando === item.id ? '...' : '+ Agregar'}
-                            </button>
-                          </div>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input type="number" min="0" value={stockEditando[item.id] ?? item.cantidad}
-                              onChange={e => setStockEditando(prev => ({ ...prev, [item.id]: e.target.value }))}
-                              style={{ width: '72px', padding: '6px 10px', border: '1px solid #E0E0E0', fontSize: '13px', fontFamily: 'Jost, sans-serif', textAlign: 'center' }} />
-                            <button onClick={() => guardarStock(item)} disabled={stockGuardando === item.id}
-                              style={{ padding: '6px 14px', border: '1px solid var(--black)', background: 'transparent', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>
-                              {stockGuardando === item.id ? '...' : 'Guardar'}
-                            </button>
-                          </div>
+                          <input
+                            type="number"
+                            value={stockCambios[item.id] || ''}
+                            onChange={e => setStockCambios(prev => ({ ...prev, [item.id]: e.target.value }))}
+                            placeholder="ej: +10 o -5"
+                            style={{ width: '120px', padding: '7px 10px', border: stockCambios[item.id] ? '1px solid var(--black)' : '1px solid #E0E0E0', fontSize: '13px', fontFamily: 'Jost, sans-serif', textAlign: 'center' }}
+                          />
                         </td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Botón único abajo */}
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px' }}>
+              {hayCambiosStock && (
+                <p style={{ fontSize: '12px', color: '#856404' }}>
+                  {Object.values(stockCambios).filter(v => v !== '' && parseInt(v) !== 0).length} plato(s) con cambios pendientes
+                </p>
+              )}
+              <button
+                onClick={aplicarCambiosStock}
+                disabled={!hayCambiosStock || aplicandoCambios}
+                style={{ background: hayCambiosStock ? 'var(--black)' : '#E0E0E0', color: hayCambiosStock ? 'var(--cream)' : '#999', border: 'none', padding: '12px 28px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: hayCambiosStock ? 'pointer' : 'not-allowed' }}
+              >
+                {aplicandoCambios ? 'Aplicando...' : 'Aplicar cambios'}
+              </button>
             </div>
           </>
         )}
