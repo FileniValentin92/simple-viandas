@@ -1,3 +1,45 @@
+'use client'
+import { useState } from 'react'
+
+function AhorraCard({ cant, off, popular }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered ? 'var(--black)' : (popular ? '#EDE9E1' : 'var(--cream)'),
+        border: '1px solid var(--black)',
+        padding: 'clamp(32px, 4vw, 48px) 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        cursor: 'pointer',
+        transition: 'background 0.25s ease',
+      }}
+    >
+      {/* Área fija para el badge — siempre ocupa el mismo espacio */}
+      <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+        {popular && (
+          <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', background: 'var(--gold)', color: '#fff', padding: '4px 10px', fontFamily: 'Jost, sans-serif', whiteSpace: 'nowrap', margin: 0 }}>
+            Más popular
+          </p>
+        )}
+      </div>
+      <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 4vw, 52px)', color: hovered ? 'var(--cream)' : 'var(--black)', marginBottom: '14px', lineHeight: '1', transition: 'color 0.25s ease' }}>
+        {cant}
+      </p>
+      <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'var(--gold)', fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '8px', whiteSpace: 'nowrap' }}>
+        {off}
+      </p>
+      <p style={{ fontSize: '11px', color: hovered ? 'rgba(247,243,236,0.4)' : 'rgba(14,14,12,0.3)', letterSpacing: '1px', fontFamily: 'Jost, sans-serif', fontWeight: '300', transition: 'color 0.25s ease' }}>
+        en el total
+      </p>
+    </div>
+  )
+}
+
 export default function MasAhorras() {
   const items = [
     { cant: '×5',  off: '$400 off' },
@@ -16,29 +58,7 @@ export default function MasAhorras() {
       </h2>
       <div className="mas-ahorras-grid">
         {items.map(item => (
-          <div
-            key={item.cant}
-            className={`mas-ahorras-card ${item.popular ? 'popular' : 'regular'}`}
-            style={{
-              background: item.popular ? '#EDE9E1' : 'var(--cream)',
-              padding: 'clamp(32px, 4vw, 48px) 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
-            {/* Área fija para el badge — siempre ocupa el mismo espacio */}
-            <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-              {item.popular && (
-                <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', background: 'var(--gold)', color: '#fff', padding: '4px 10px', fontFamily: 'Jost, sans-serif', whiteSpace: 'nowrap', margin: 0 }}>
-                  Más popular
-                </p>
-              )}
-            </div>
-            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 4vw, 52px)', color: 'var(--black)', marginBottom: '14px', lineHeight: '1' }}>{item.cant}</p>
-            <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'var(--gold)', fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '8px', whiteSpace: 'nowrap' }}>{item.off}</p>
-            <p style={{ fontSize: '11px', color: 'rgba(14,14,12,0.3)', letterSpacing: '1px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>en el total</p>
-          </div>
+          <AhorraCard key={item.cant} {...item} />
         ))}
       </div>
       <p style={{ fontSize: '13px', color: 'rgba(14,14,12,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>

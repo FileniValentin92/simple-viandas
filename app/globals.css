@@ -326,23 +326,6 @@ nav {
   margin: 0 auto;
 }
 
-/* ─── MAS AHORRAS CARD HOVER ─── */
-.mas-ahorras-card {
-  cursor: pointer;
-  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-.mas-ahorras-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  z-index: 1;
-  position: relative;
-}
-.mas-ahorras-card.popular:hover {
-  background: #D5CFC5 !important;
-}
-.mas-ahorras-card.regular:hover {
-  background: var(--cream-mid) !important;
-}
 
 /* ─── BANNER PROMO MOBILE ─── */
 @media (max-width: 640px) {
