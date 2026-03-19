@@ -311,8 +311,49 @@ nav {
   margin: 0 auto;
 }
 
+/* ─── MENU GRID CARD HOVER (fondo negro) ─── */
+.menu-grid > div {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.menu-grid > div:hover {
+  transform: translateY(-3px);
+  border-color: rgba(247,243,236,0.25) !important;
+}
+
 /* ─── SECTION INNER CONTAINER ─── */
 .section-inner {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+/* ─── MAS AHORRAS CARD HOVER ─── */
+.mas-ahorras-card {
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.mas-ahorras-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  z-index: 1;
+  position: relative;
+}
+.mas-ahorras-card.popular:hover {
+  background: #D5CFC5 !important;
+}
+.mas-ahorras-card.regular:hover {
+  background: var(--cream-mid) !important;
+}
+
+/* ─── BANNER PROMO MOBILE ─── */
+@media (max-width: 640px) {
+  .banner-promo {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 16px !important;
+    text-align: center;
+  }
+  .banner-promo-text {
+    font-size: 10px !important;
+    letter-spacing: 0.5px !important;
+  }
 }
