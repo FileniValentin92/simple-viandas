@@ -9,126 +9,56 @@ const platos = [
 
 export default function MenuDestacado() {
   return (
-    <section style={{
-      background: 'var(--white)',
-      padding: '80px 24px',
-    }}>
-      <div className="menu-destacado-header">
-        <div>
-          <p style={{
-            fontSize: '10px',
-            letterSpacing: '5px',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-            fontWeight: '300',
-            marginBottom: '12px',
-          }}>
-            El menú
-          </p>
-          <h2 className="section-titulo" style={{
-            fontFamily: 'Playfair Display, serif',
-            color: 'var(--black)',
-            fontWeight: '400',
-          }}>
-            15 platos fijos,<br />siempre disponibles.
-          </h2>
-        </div>
-        <a href="/menu" style={{
-          background: 'transparent',
-          color: 'var(--black)',
-          border: '1px solid var(--black)',
-          padding: '14px 24px',
-          fontSize: '9px',
-          letterSpacing: '3px',
-          textTransform: 'uppercase',
-          fontFamily: 'Jost, sans-serif',
-          fontWeight: '300',
-          cursor: 'pointer',
-          textDecoration: 'none',
-          display: 'inline-block',
-          whiteSpace: 'nowrap',
-          alignSelf: 'flex-end',
-        }}>
-          Ver todo el menú
-        </a>
-      </div>
+    <section style={{ background: 'var(--cream)', padding: '88px 80px', textAlign: 'center' }}>
+      <p style={{ fontSize: '10px', letterSpacing: '5px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px', fontFamily: 'Jost, sans-serif' }}>
+        El menú
+      </p>
+      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '52px', color: 'var(--black)', fontWeight: '400', marginBottom: '32px', lineHeight: '1.1' }}>
+        14 platos fijos,<br />siempre disponibles.
+      </h2>
+      <a href="/menu" style={{
+        background: 'var(--black)',
+        color: 'var(--cream)',
+        border: 'none',
+        padding: '16px 40px',
+        fontSize: '10px',
+        letterSpacing: '3px',
+        textTransform: 'uppercase',
+        fontFamily: 'Jost, sans-serif',
+        fontWeight: '300',
+        cursor: 'pointer',
+        textDecoration: 'none',
+        display: 'inline-block',
+        marginBottom: '56px',
+      }}>
+        Ver todo el menú
+      </a>
 
-      <div className="menu-grid" style={{ marginTop: '40px' }}>
+      <div className="menu-grid">
         {platos.map((plato) => (
-          <div key={plato.nombre} style={{
-            border: '1px solid var(--cream-deep)',
-            background: 'var(--white)',
-            cursor: 'pointer',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              background: 'var(--cream)',
-              height: '160px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '56px',
-            }}>
+          <div key={plato.nombre} style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', cursor: 'pointer', overflow: 'hidden' }}>
+            <div style={{ background: 'var(--cream)', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '56px' }}>
               {plato.emoji}
             </div>
-
             <div style={{ padding: '20px' }}>
-              <h3 style={{
-                fontFamily: 'Playfair Display, serif',
-                fontSize: '18px',
-                color: 'var(--black)',
-                fontWeight: '400',
-                marginBottom: '4px',
-              }}>
+              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '18px', color: 'var(--black)', fontWeight: '400', marginBottom: '4px' }}>
                 {plato.nombre}
               </h3>
-
-              <p style={{
-                fontSize: '12px',
-                color: '#999',
-                fontWeight: '300',
-                marginBottom: '16px',
-              }}>
+              <p style={{ fontSize: '12px', color: '#999', fontWeight: '300', marginBottom: '16px' }}>
                 {plato.descripcion}
               </p>
-
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {[`⏱ ${plato.tiempo}`, '❄️ Freezer', plato.puntos].map((tag) => (
-                  <span key={tag} style={{
-                    fontSize: '9px',
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                    color: 'var(--olive-mid)',
-                    background: 'var(--cream)',
-                    padding: '4px 10px',
-                    fontWeight: '300',
-                  }}>
+                  <span key={tag} style={{ fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--olive-mid)', background: 'var(--cream)', padding: '4px 10px', fontWeight: '300' }}>
                     {tag}
                   </span>
                 ))}
               </div>
-
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{
-                  fontFamily: 'Playfair Display, serif',
-                  fontSize: '22px',
-                  color: 'var(--black)',
-                }}>
+                <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: 'var(--black)' }}>
                   {plato.precio}
                 </span>
-                <a href="/menu" style={{
-                  background: 'var(--black)',
-                  color: 'var(--cream)',
-                  border: 'none',
-                  padding: '10px 20px',
-                  fontSize: '9px',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  fontFamily: 'Jost, sans-serif',
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  display: 'inline-block',
-                }}>
+                <a href="/menu" style={{ background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '10px 20px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
                   Agregar
                 </a>
               </div>
