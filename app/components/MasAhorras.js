@@ -9,8 +9,8 @@ function AhorraCard({ cant, off, popular }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered ? 'var(--black)' : (popular ? '#EDE9E1' : 'var(--cream)'),
-        border: '1px solid var(--black)',
+        background: hovered ? 'var(--cream)' : (popular ? 'rgba(247,243,236,0.07)' : 'transparent'),
+        border: '1px solid var(--gold)',
         padding: 'clamp(32px, 4vw, 48px) 20px',
         display: 'flex',
         flexDirection: 'column',
@@ -19,7 +19,6 @@ function AhorraCard({ cant, off, popular }) {
         transition: 'background 0.25s ease',
       }}
     >
-      {/* Área fija para el badge — siempre ocupa el mismo espacio */}
       <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
         {popular && (
           <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', background: 'var(--gold)', color: '#fff', padding: '4px 10px', fontFamily: 'Jost, sans-serif', whiteSpace: 'nowrap', margin: 0 }}>
@@ -27,13 +26,13 @@ function AhorraCard({ cant, off, popular }) {
           </p>
         )}
       </div>
-      <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 4vw, 52px)', color: hovered ? 'var(--cream)' : 'var(--black)', marginBottom: '14px', lineHeight: '1', transition: 'color 0.25s ease' }}>
+      <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 4vw, 52px)', color: hovered ? 'var(--black)' : 'var(--cream)', marginBottom: '14px', lineHeight: '1', transition: 'color 0.25s ease' }}>
         {cant}
       </p>
       <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'var(--gold)', fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '8px', whiteSpace: 'nowrap' }}>
         {off}
       </p>
-      <p style={{ fontSize: '11px', color: hovered ? 'rgba(247,243,236,0.4)' : 'rgba(14,14,12,0.3)', letterSpacing: '1px', fontFamily: 'Jost, sans-serif', fontWeight: '300', transition: 'color 0.25s ease' }}>
+      <p style={{ fontSize: '11px', color: hovered ? 'rgba(14,14,12,0.4)' : 'rgba(247,243,236,0.4)', letterSpacing: '1px', fontFamily: 'Jost, sans-serif', fontWeight: '300', transition: 'color 0.25s ease' }}>
         en el total
       </p>
     </div>
@@ -49,21 +48,23 @@ export default function MasAhorras() {
   ]
 
   return (
-    <section style={{ background: 'var(--cream)', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
-      <p style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontFamily: 'Jost, sans-serif', fontWeight: '300', marginBottom: '16px' }}>
-        Cuanto más comprás
-      </p>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 5vw, 52px)', color: 'var(--black)', fontWeight: '400', marginBottom: '52px' }}>
-        Más ahorrás
-      </h2>
-      <div className="mas-ahorras-grid">
-        {items.map(item => (
-          <AhorraCard key={item.cant} {...item} />
-        ))}
+    <section style={{ background: 'var(--cream)', padding: 'clamp(32px, 5vw, 56px) clamp(20px, 5vw, 80px)' }}>
+      <div style={{ border: '1px solid var(--gold)', background: 'var(--black)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+        <p style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontFamily: 'Jost, sans-serif', fontWeight: '300', marginBottom: '16px' }}>
+          Cuanto más comprás
+        </p>
+        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 5vw, 52px)', color: 'var(--cream)', fontWeight: '400', marginBottom: '52px' }}>
+          Más ahorrás
+        </h2>
+        <div className="mas-ahorras-grid" style={{ background: 'rgba(184,154,94,0.2)' }}>
+          {items.map(item => (
+            <AhorraCard key={item.cant} {...item} />
+          ))}
+        </div>
+        <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
+          Los descuentos se aplican automáticamente al agregar viandas al carrito.
+        </p>
       </div>
-      <p style={{ fontSize: '13px', color: 'rgba(14,14,12,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
-        Los descuentos se aplican automáticamente al agregar viandas al carrito.
-      </p>
     </section>
   )
 }

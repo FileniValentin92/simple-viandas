@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
 import { useCart } from '../components/CartContext'
 import Navbar from '../components/Navbar'
@@ -37,7 +36,6 @@ const PACKS = [
 const SIZES = [5, 10, 15, 20]
 
 export default function PacksPage() {
-  const router = useRouter()
   const { agregarItem } = useCart()
   const [stock, setStock] = useState({})
   const [modal, setModal] = useState(null) // { pack, size }
@@ -117,16 +115,18 @@ export default function PacksPage() {
       <Navbar />
 
       {/* Header */}
-      <section style={{ background: 'var(--black)', padding: '80px 24px 60px', textAlign: 'center' }}>
-        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '16px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
-          Ahorrá más
-        </p>
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '48px', color: 'var(--cream)', fontWeight: '400', marginBottom: '16px' }}>
-          Packs
-        </h1>
-        <p style={{ fontSize: '15px', color: 'rgba(247,243,236,0.6)', maxWidth: '480px', margin: '0 auto', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.7' }}>
-          Armá tu pack de tartas, lasagna o pastel de papa. Combiná las opciones que quieras dentro de cada categoría.
-        </p>
+      <section style={{ background: 'var(--black)', padding: 'clamp(32px, 5vw, 56px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
+        <div style={{ border: '1px solid var(--gold)', background: 'var(--cream)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '720px', margin: '0 auto' }}>
+          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '16px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
+            Ahorrá más
+          </p>
+          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '48px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>
+            Packs
+          </h1>
+          <p style={{ fontSize: '15px', color: 'rgba(14,14,12,0.6)', maxWidth: '480px', margin: '0 auto', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.7' }}>
+            Armá tu pack de tartas, lasagna o pastel de papa. Combiná las opciones que quieras dentro de cada categoría.
+          </p>
+        </div>
       </section>
 
       {/* Packs */}
@@ -141,7 +141,7 @@ export default function PacksPage() {
                   <span style={{ fontSize: '40px' }}>{pack.emoji}</span>
                   <div>
                     <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '26px', color: 'var(--black)', fontWeight: '400', marginBottom: '6px' }}>{pack.nombre}</h2>
-                    <p style={{ fontSize: '13px', color: '#999', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>{pack.descripcion}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--black)', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>{pack.descripcion}</p>
                     {sinStock && (
                       <p style={{ fontSize: '12px', color: '#e74c3c', marginTop: '8px', fontFamily: 'Jost, sans-serif' }}>Sin stock disponible</p>
                     )}
