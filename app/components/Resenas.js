@@ -9,9 +9,9 @@ export default function Resenas() {
   return (
     <section style={{
       background: 'var(--cream)',
-      padding: '80px 24px',
+      padding: 'clamp(48px, 7vw, 80px) clamp(20px, 5vw, 80px)',
     }}>
-      <div style={{ marginBottom: '48px' }}>
+      <div style={{ marginBottom: '48px', maxWidth: '1280px', margin: '0 auto 48px' }}>
         <p style={{
           fontSize: '10px',
           letterSpacing: '5px',

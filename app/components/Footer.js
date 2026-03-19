@@ -2,8 +2,9 @@ export default function Footer() {
   return (
     <footer style={{
       background: 'var(--black)',
-      padding: '64px',
+      padding: 'clamp(40px, 5vw, 64px) clamp(20px, 5vw, 64px)',
     }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
       {/* Grid principal */}
       <div className="footer-grid" style={{ marginBottom: '48px' }}>
 
@@ -131,6 +132,7 @@ export default function Footer() {
         </p>
       </div>
 
+      </div>
     </footer>
   )
 }

@@ -48,7 +48,7 @@ export default function ArmaTuPack() {
       <p style={{ fontSize: '14px', color: 'rgba(247,243,236,0.5)', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.7', marginBottom: '40px', maxWidth: '480px', margin: '0 auto 40px' }}>
         Tartas, lasagna o pastel de papa. Combiná las opciones que quieras dentro de cada categoría.
       </p>
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
+      <div className="pack-boxes">
         {SIZES.map(s => <PackBox key={s.cant} {...s} />)}
       </div>
       <Link href="/packs" style={{ background: 'var(--cream)', color: 'var(--black)', padding: '16px 40px', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '400', textDecoration: 'none', display: 'inline-block' }}>

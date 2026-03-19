@@ -234,3 +234,85 @@ nav {
     display: flex !important;
   }
 }
+
+/* ─── SECTION TITULO ─── */
+.section-titulo {
+  font-size: clamp(36px, 4vw, 52px);
+  line-height: 1.1;
+}
+
+/* ─── MAS AHORRAS GRID ─── */
+.mas-ahorras-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(0,0,0,0.08);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .mas-ahorras-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ─── PACK BOXES (ARMA TU PACK) ─── */
+.pack-boxes {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .pack-boxes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+}
+
+/* ─── COMO FUNCIONA GRID ─── */
+@media (max-width: 768px) {
+  .como-funciona-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 480px !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* ─── RESEÑAS GRID ─── */
+.resenas-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .resenas-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .resenas-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* ─── MENU GRID DESKTOP MAX WIDTH ─── */
+.menu-grid-wrapper {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ─── SECTION INNER CONTAINER ─── */
+.section-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}

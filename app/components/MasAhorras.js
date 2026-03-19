@@ -7,23 +7,23 @@ export default function MasAhorras() {
   ]
 
   return (
-    <section style={{ background: 'var(--cream)', padding: '88px 80px', textAlign: 'center' }}>
+    <section style={{ background: 'var(--cream)', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
       <p style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontFamily: 'Jost, sans-serif', fontWeight: '300', marginBottom: '16px' }}>
         Cuanto más comprás
       </p>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '52px', color: 'var(--black)', fontWeight: '400', marginBottom: '52px' }}>
+      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 5vw, 52px)', color: 'var(--black)', fontWeight: '400', marginBottom: '52px' }}>
         Más ahorrás
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
+      <div className="mas-ahorras-grid">
         {items.map(item => (
-          <div key={item.cant} style={{ background: item.popular ? '#EDE9E1' : 'var(--cream)', padding: '48px 20px' }}>
+          <div key={item.cant} style={{ background: item.popular ? '#EDE9E1' : 'var(--cream)', padding: 'clamp(32px, 4vw, 48px) 20px' }}>
             {item.popular && (
               <p style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', background: 'var(--gold)', color: '#fff', padding: '4px 10px', display: 'inline-block', marginBottom: '12px', fontFamily: 'Jost, sans-serif', whiteSpace: 'nowrap' }}>
                 Más popular
               </p>
             )}
-            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '52px', color: 'var(--black)', marginBottom: '14px', lineHeight: '1' }}>{item.cant}</p>
-            <p style={{ fontSize: "18px", color: "var(--gold)", fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '8px', whiteSpace: 'nowrap' }}>{item.off}</p>
+            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(36px, 4vw, 52px)', color: 'var(--black)', marginBottom: '14px', lineHeight: '1' }}>{item.cant}</p>
+            <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'var(--gold)', fontWeight: '500', fontFamily: 'Jost, sans-serif', marginBottom: '8px', whiteSpace: 'nowrap' }}>{item.off}</p>
             <p style={{ fontSize: '11px', color: 'rgba(14,14,12,0.3)', letterSpacing: '1px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>en el total</p>
           </div>
         ))}

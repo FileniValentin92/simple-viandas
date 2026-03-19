@@ -13,7 +13,7 @@ export default function ComoFunciona() {
         <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: 'var(--black)', fontWeight: '400', marginBottom: '48px' }}>
           Listo en 3 pasos
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', maxWidth: '820px', margin: '0 auto' }} className="como-funciona-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', maxWidth: '900px', margin: '0 auto' }} className="como-funciona-grid">
           {pasos.map(paso => (
             <div key={paso.num} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 28px' }}>
               <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '64px', color: 'var(--gold)', opacity: 0.3, lineHeight: '1', marginBottom: '20px' }}>

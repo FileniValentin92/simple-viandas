@@ -9,11 +9,11 @@ const platos = [
 
 export default function MenuDestacado() {
   return (
-    <section style={{ background: 'var(--cream)', padding: '88px 80px', textAlign: 'center' }}>
+    <section style={{ background: 'var(--cream)', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
       <p style={{ fontSize: '10px', letterSpacing: '5px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px', fontFamily: 'Jost, sans-serif' }}>
         El menú
       </p>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '52px', color: 'var(--black)', fontWeight: '400', marginBottom: '32px', lineHeight: '1.1' }}>
+      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(32px, 4vw, 52px)', color: 'var(--black)', fontWeight: '400', marginBottom: '32px', lineHeight: '1.1' }}>
         14 platos fijos,<br />siempre disponibles.
       </h2>
       <a href="/menu" style={{
@@ -34,6 +34,7 @@ export default function MenuDestacado() {
         Ver todo el menú
       </a>
 
+      <div className="menu-grid-wrapper">
       <div className="menu-grid">
         {platos.map((plato) => (
           <div key={plato.nombre} style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', cursor: 'pointer', overflow: 'hidden' }}>
@@ -65,6 +66,7 @@ export default function MenuDestacado() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </section>
   )

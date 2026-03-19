@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export default function Hero() {
   return (
-    <section style={{ background: 'var(--black)', padding: '110px 80px 120px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+    <section style={{ background: 'var(--black)', padding: 'clamp(72px, 10vw, 110px) clamp(24px, 5vw, 80px) clamp(80px, 10vw, 120px)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 60% at 50% 110%, rgba(74,85,48,0.4) 0%, transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', width: '100%', maxWidth: '1100px' }}>
         <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '32px', lineHeight: '1.8', fontFamily: 'Jost, sans-serif' }}>
