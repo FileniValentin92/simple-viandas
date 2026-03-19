@@ -40,6 +40,8 @@ export default function AdminPage() {
   const [stock, setStock] = useState([])
   const [stockEditando, setStockEditando] = useState({})
   const [stockGuardando, setStockGuardando] = useState(null)
+  const [stockAgregando, setStockAgregando] = useState({})
+  const [stockAgregandoGuardando, setStockAgregandoGuardando] = useState(null)
 
   const [periodo, setPeriodo] = useState('semana')
   const [reporte, setReporte] = useState(null)
@@ -119,6 +121,18 @@ export default function AdminPage() {
     await supabase.from('stock').update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() }).eq('id', item.id)
     setStock(prev => prev.map(s => s.id === item.id ? { ...s, cantidad: nuevaCantidad } : s))
     setStockGuardando(null)
+  }
+
+  const agregarStock = async (item) => {
+    const suma = parseInt(stockAgregando[item.id]) || 0
+    if (suma <= 0) return
+    setStockAgregandoGuardando(item.id)
+    const nuevaCantidad = item.cantidad + suma
+    await supabase.from('stock').update({ cantidad: nuevaCantidad, updated_at: new Date().toISOString() }).eq('id', item.id)
+    setStock(prev => prev.map(s => s.id === item.id ? { ...s, cantidad: nuevaCantidad } : s))
+    setStockEditando(prev => ({ ...prev, [item.id]: nuevaCantidad }))
+    setStockAgregando(prev => ({ ...prev, [item.id]: '' }))
+    setStockAgregandoGuardando(null)
   }
 
   // ── Exportar PDF Cocina ──
@@ -472,7 +486,7 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                    {['Plato', 'Categoría', 'Stock actual', 'Vendidos (histórico)', 'Alerta mínima', 'Actualizar'].map(h => (
+                    {['Plato', 'Categoría', 'Stock actual', 'Vendidos (histórico)', 'Alerta mínima', 'Agregar', 'Setear exacto'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '400', textAlign: 'left' }}>{h}</th>
                     ))}
                   </tr>
@@ -494,6 +508,18 @@ export default function AdminPage() {
                         </td>
                         <td style={{ padding: '14px 16px', fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>{item.vendidos_total || 0}</td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', color: '#999' }}>{item.alerta_minima} uds</td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input type="number" min="1" value={stockAgregando[item.id] || ''}
+                              onChange={e => setStockAgregando(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              placeholder="+10"
+                              style={{ width: '72px', padding: '6px 10px', border: '1px solid #E0E0E0', fontSize: '13px', fontFamily: 'Jost, sans-serif', textAlign: 'center' }} />
+                            <button onClick={() => agregarStock(item)} disabled={stockAgregandoGuardando === item.id}
+                              style={{ padding: '6px 14px', border: 'none', background: '#D4EDDA', color: '#155724', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
+                              {stockAgregandoGuardando === item.id ? '...' : '+ Agregar'}
+                            </button>
+                          </div>
+                        </td>
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <input type="number" min="0" value={stockEditando[item.id] ?? item.cantidad}
