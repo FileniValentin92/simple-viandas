@@ -1,6 +1,9 @@
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
-import Packs from './components/Packs'
+import BannerPromo from './components/BannerPromo'
+import MasAhorras from './components/MasAhorras'
+import ArmaTuPack from './components/ArmaTuPack'
+import ComoFunciona from './components/ComoFunciona'
 import MenuDestacado from './components/MenuDestacado'
 import Resenas from './components/Resenas'
 import Footer from './components/Footer'
@@ -10,7 +13,10 @@ export default function Home() {
     <main>
       <Navbar />
       <Hero />
-      <Packs />
+      <BannerPromo />
+      <MasAhorras />
+      <ArmaTuPack />
+      <ComoFunciona />
       <MenuDestacado />
       <Resenas />
       <Footer />
