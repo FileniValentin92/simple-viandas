@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useCart } from '../components/CartContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import ComoFunciona from '../components/ComoFunciona'
 
 const PACKS = [
   {
@@ -34,6 +35,13 @@ const PACKS = [
 ]
 
 const SIZES = [5, 10, 15, 20]
+
+const PREVIEW_SIZES = [
+  { cant: '×5', precio: 'desde $39.000' },
+  { cant: '×10', precio: 'desde $74.000' },
+  { cant: '×15', precio: 'desde $105.000' },
+  { cant: '×20', precio: 'desde $134.000' },
+]
 
 export default function PacksPage() {
   const { agregarItem } = useCart()
@@ -114,33 +122,43 @@ export default function PacksPage() {
     <main>
       <Navbar />
 
-      {/* Header */}
-      <section style={{ background: 'var(--black)', padding: 'clamp(32px, 5vw, 56px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
-        <div style={{ border: '1px solid var(--gold)', background: 'var(--cream)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '720px', margin: '0 auto' }}>
-          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '16px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
-            Ahorrá más
-          </p>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '48px', color: 'var(--black)', fontWeight: '400', marginBottom: '16px' }}>
-            Packs
+      {/* Hero */}
+      <section style={{ background: 'var(--black)', padding: 'clamp(32px, 5vw, 80px) clamp(20px, 5vw, 80px)', textAlign: 'center' }}>
+        <div style={{ border: '1px solid var(--gold)', background: 'var(--cream)', padding: 'clamp(40px, 5vw, 64px) clamp(24px, 4vw, 56px)', maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'inline-block', background: 'var(--black)', border: '1px solid var(--gold)', padding: '6px 18px', marginBottom: '16px' }}>
+            <span style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: '#fff', fontFamily: 'Jost, sans-serif', fontWeight: '700' }}>
+              ¿Querés elegir lo que llevás?
+            </span>
+          </div>
+          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(28px, 4vw, 36px)', color: 'var(--black)', fontWeight: '400', marginBottom: '12px' }}>
+            Armá tu pack
           </h1>
-          <p style={{ fontSize: '15px', color: 'rgba(14,14,12,0.6)', maxWidth: '480px', margin: '0 auto', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.7' }}>
-            Armá tu pack de tartas, lasagna o pastel de papa. Combiná las opciones que quieras dentro de cada categoría.
+          <p style={{ fontSize: '14px', color: 'rgba(14,14,12,0.6)', maxWidth: '480px', margin: '0 auto 40px', fontFamily: 'Jost, sans-serif', fontWeight: '300', lineHeight: '1.7' }}>
+            Tartas, lasagna o pastel de papa. Combiná las opciones que quieras dentro de cada categoría.
           </p>
+          <div className="pack-hero-boxes">
+            {PREVIEW_SIZES.map(({ cant, precio }) => (
+              <div key={cant} style={{ border: '1px solid rgba(14,14,12,0.2)', padding: '24px 16px', textAlign: 'center' }}>
+                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(20px, 3vw, 28px)', color: 'var(--black)', marginBottom: '6px' }}>{cant}</p>
+                <p style={{ fontSize: '10px', color: 'rgba(14,14,12,0.55)', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>{precio}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Packs */}
-      <section style={{ background: 'var(--cream)', padding: '60px 24px 80px' }}>
+      <section style={{ background: 'var(--cream)', padding: '60px clamp(20px, 5vw, 80px) 80px' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {PACKS.map(pack => {
             const dispTotal = stockTotal(pack.viandas)
             const sinStock = dispTotal === 0
             return (
-              <div key={pack.id} style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: '36px' }}>
+              <div key={pack.id} style={{ border: '1px solid var(--cream-deep)', background: 'var(--white)', padding: 'clamp(24px, 3vw, 36px)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', marginBottom: '28px' }}>
                   <span style={{ fontSize: '40px' }}>{pack.emoji}</span>
                   <div>
-                    <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '26px', color: 'var(--black)', fontWeight: '400', marginBottom: '6px' }}>{pack.nombre}</h2>
+                    <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(20px, 2.5vw, 26px)', color: 'var(--black)', fontWeight: '400', marginBottom: '6px' }}>{pack.nombre}</h2>
                     <p style={{ fontSize: '13px', color: 'var(--black)', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>{pack.descripcion}</p>
                     {sinStock && (
                       <p style={{ fontSize: '12px', color: '#e74c3c', marginTop: '8px', fontFamily: 'Jost, sans-serif' }}>Sin stock disponible</p>
@@ -167,8 +185,8 @@ export default function PacksPage() {
                           textAlign: 'center',
                           transition: 'all 0.2s',
                         }}
-                        onMouseEnter={e => { if (disponible) { e.target.style.background = 'var(--black)'; e.target.style.color = 'var(--cream)' }}}
-                        onMouseLeave={e => { if (disponible) { e.target.style.background = 'transparent'; e.target.style.color = 'var(--black)' }}}
+                        onMouseEnter={e => { if (disponible) { e.currentTarget.style.background = 'var(--black)'; e.currentTarget.style.color = 'var(--cream)' }}}
+                        onMouseLeave={e => { if (disponible) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--black)' }}}
                       >
                         <div style={{ fontSize: '18px', fontFamily: 'Playfair Display, serif', marginBottom: '4px' }}>×{size}</div>
                         <div style={{ fontSize: '12px', fontWeight: '300' }}>${precio.toLocaleString('es-AR')}</div>
@@ -182,6 +200,9 @@ export default function PacksPage() {
           })}
         </div>
       </section>
+
+      {/* Cómo funciona */}
+      <ComoFunciona variant="inverted" />
 
       {/* Modal */}
       {modal && (

@@ -40,13 +40,15 @@ nav {
 /* ─── MENU PAGE ─── */
 .menu-header {
   background: var(--black);
-  padding: 64px;
+  padding: clamp(64px, 8vw, 100px) clamp(20px, 5vw, 80px);
+  text-align: center;
 }
 .menu-header h1 {
   font-family: 'Playfair Display', serif;
-  font-size: 56px;
+  font-size: clamp(40px, 6vw, 68px);
   color: var(--cream);
   font-weight: 400;
+  line-height: 1.05;
 }
 .menu-header p {
   font-size: 10px;
@@ -54,29 +56,37 @@ nav {
   text-transform: uppercase;
   color: var(--gold);
   font-weight: 300;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .menu-filtros {
-  background: var(--cream);
-  padding: 32px 64px;
+  background: var(--black);
+  padding: 24px clamp(20px, 5vw, 80px);
   display: flex;
-  gap: 12px;
-  border-bottom: 1px solid var(--cream-deep);
+  gap: 8px;
+  border-bottom: 1px solid rgba(247,243,236,0.08);
   flex-wrap: wrap;
 }
 .menu-grilla {
-  background: var(--white);
-  padding: 48px 64px;
+  background: var(--black);
+  padding: 40px clamp(20px, 5vw, 80px) 80px;
 }
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
   .menu-header {
-    padding: 40px 20px;
+    padding: 48px 20px;
   }
   .menu-header h1 {
     font-size: 36px;
@@ -86,7 +96,7 @@ nav {
     gap: 8px;
   }
   .menu-grilla {
-    padding: 24px 16px;
+    padding: 24px 16px 48px;
   }
   .menu-grid {
     grid-template-columns: 1fr;
@@ -274,6 +284,68 @@ nav {
   }
 }
 
+/* ─── PACK HERO BOXES (PACKS PAGE) ─── */
+.pack-hero-boxes {
+  display: flex;
+  gap: 0;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 640px) {
+  .pack-hero-boxes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ─── MODALIDAD GRID (¿CÓMO QUERÉS PEDIR?) ─── */
+.modalidad-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .modalidad-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── PROMO GRID ─── */
+.promo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .promo-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .promo-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* ─── PROMO CARD ─── */
+.promo-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 36px 28px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ─── COMO FUNCIONA GRID ─── */
 @media (max-width: 768px) {
   .como-funciona-grid {
@@ -311,13 +383,13 @@ nav {
   margin: 0 auto;
 }
 
-/* ─── MENU GRID CARD HOVER (fondo negro) ─── */
+/* ─── MENU GRID CARD HOVER ─── */
 .menu-grid > div {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 .menu-grid > div:hover {
   transform: translateY(-3px);
-  border-color: rgba(247,243,236,0.25) !important;
+  border-color: rgba(184,154,94,0.3) !important;
 }
 
 /* ─── SECTION INNER CONTAINER ─── */

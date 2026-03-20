@@ -1,11 +1,10 @@
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import BannerPromo from './components/BannerPromo'
-import MasAhorras from './components/MasAhorras'
-import ArmaTuPack from './components/ArmaTuPack'
-import ComoFunciona from './components/ComoFunciona'
 import MenuDestacado from './components/MenuDestacado'
-import Resenas from './components/Resenas'
+import ArmaTuPack from './components/ArmaTuPack'
+import PromocionesHome from './components/PromocionesHome'
+import FAQ from './components/FAQ'
 import Footer from './components/Footer'
 
 export default function Home() {
@@ -14,11 +13,10 @@ export default function Home() {
       <Navbar />
       <Hero />
       <BannerPromo />
-      <MasAhorras />
-      <ArmaTuPack />
-      <ComoFunciona />
       <MenuDestacado />
-      <Resenas />
+      <ArmaTuPack />
+      <PromocionesHome />
+      <FAQ />
       <Footer />
     </main>
   )
