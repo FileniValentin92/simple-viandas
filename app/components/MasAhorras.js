@@ -11,7 +11,7 @@ function AhorraCard({ cant, off, popular }) {
       style={{
         background: hovered ? 'var(--cream)' : (popular ? 'rgba(247,243,236,0.07)' : 'transparent'),
         border: '1px solid var(--gold)',
-        padding: 'clamp(32px, 4vw, 48px) 20px',
+        padding: 'clamp(20px, 4vw, 48px) clamp(8px, 2vw, 20px)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

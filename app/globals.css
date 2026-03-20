@@ -65,6 +65,7 @@ nav {
   gap: 8px;
   border-bottom: 1px solid rgba(247,243,236,0.08);
   flex-wrap: wrap;
+  justify-content: center;
 }
 .menu-grilla {
   background: var(--black);
@@ -263,7 +264,7 @@ nav {
 
 @media (max-width: 768px) {
   .mas-ahorras-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -289,6 +290,7 @@ nav {
   display: flex;
   gap: 0;
   margin-bottom: 32px;
+  justify-content: center;
 }
 
 @media (max-width: 640px) {
