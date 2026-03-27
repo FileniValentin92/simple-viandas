@@ -7,42 +7,7 @@ import Footer from '../components/Footer'
 import MasAhorras from '../components/MasAhorras'
 import ComoFunciona from '../components/ComoFunciona'
 import { useCart } from '../components/CartContext'
-
-const platos = [
-  { emoji: '🍖', nombre: 'Milanesa napolitana', descripcion: 'Con puré rústico de papa', categoria: 'carne', tiempo: '10 min', precio: '$8.900', precioNum: 8900, puntos: '+45 pts' },
-  { emoji: '🥩', nombre: 'Carne al verdeo', descripcion: 'Con papas al natural', categoria: 'carne', tiempo: '10 min', precio: '$9.200', precioNum: 9200, puntos: '+46 pts' },
-  { emoji: '🫕', nombre: 'Tuco de carne', descripcion: 'Bolognesa casera', categoria: 'carne', tiempo: '10 min', precio: '$8.200', precioNum: 8200, puntos: '+41 pts' },
-  { emoji: '🍗', nombre: 'Pollo al limón', descripcion: 'Con papas al olivo', categoria: 'pollo', tiempo: '10 min', precio: '$8.500', precioNum: 8500, puntos: '+43 pts' },
-  { emoji: '🍗', nombre: 'Pollo al verdeo', descripcion: 'Con arroz blanco', categoria: 'pollo', tiempo: '10 min', precio: '$8.300', precioNum: 8300, puntos: '+42 pts' },
-  { emoji: '🍗', nombre: 'Suprema a la maryland', descripcion: 'Con puré y banana', categoria: 'pollo', tiempo: '10 min', precio: '$8.600', precioNum: 8600, puntos: '+43 pts' },
-  { emoji: '🥦', nombre: 'Tarta de verdura', descripcion: 'Espinaca y ricota', categoria: 'vegetariano', tiempo: '10 min', precio: '$7.800', precioNum: 7800, puntos: '+39 pts' },
-  { emoji: '🍳', nombre: 'Tortilla de papas', descripcion: 'Con ensalada verde', categoria: 'vegetariano', tiempo: '10 min', precio: '$7.500', precioNum: 7500, puntos: '+38 pts' },
-  { emoji: '🫘', nombre: 'Guiso de lentejas', descripcion: 'Con verduras de estación', categoria: 'vegetariano', tiempo: '10 min', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
-  { emoji: '🍝', nombre: 'Ñoquis con salsa rosa', descripcion: 'Salsa casera cremosa', categoria: 'pasta', tiempo: '10 min', precio: '$8.100', precioNum: 8100, puntos: '+41 pts' },
-  { emoji: '🍝', nombre: 'Fideos con tuco', descripcion: 'Salsa de tomate casera', categoria: 'pasta', tiempo: '10 min', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
-  { emoji: '🍝', nombre: 'Lasagna de carne', descripcion: 'Con bechamel casera', categoria: 'pasta', tiempo: '10 min', precio: '$9.100', precioNum: 9100, puntos: '+46 pts' },
-  { emoji: '🐟', nombre: 'Merluza al vapor', descripcion: 'Con puré de calabaza', categoria: 'pescado', tiempo: '10 min', precio: '$9.500', precioNum: 9500, puntos: '+48 pts' },
-  { emoji: '🐟', nombre: 'Salmon con limón', descripcion: 'Con arroz yamaní', categoria: 'pescado', tiempo: '10 min', precio: '$10.200', precioNum: 10200, puntos: '+51 pts' },
-  { emoji: '🥘', nombre: 'Cazuela de mariscos', descripcion: 'Con papas y verduras', categoria: 'pescado', tiempo: '10 min', precio: '$10.500', precioNum: 10500, puntos: '+53 pts' },
-]
-
-const filtros = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'carne', label: 'Carne' },
-  { id: 'pollo', label: 'Pollo' },
-  { id: 'vegetariano', label: 'Vegetariano' },
-  { id: 'pasta', label: 'Pasta' },
-  { id: 'pescado', label: 'Pescado' },
-]
-
-function nombreASlug(nombre) {
-  return nombre
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-}
+import { platos, filtros, nombreASlug } from '../data/platos'
 
 function SelectorCantidad({ plato }) {
   const [cantidad, setCantidad] = useState(1)

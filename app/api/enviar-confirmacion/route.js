@@ -2,21 +2,38 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+function escapeHtml(text) {
+  if (!text) return ''
+  const str = String(text)
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }
+  return str.replace(/[&<>"']/g, m => map[m])
+}
+
 export async function POST(request) {
   try {
-    const { nombre, email, items, total, direccion, telefono } = await request.json()
+    const body = await request.json()
+    const { nombre, email, items, total, direccion, telefono } = body
 
-    if (!email) {
+    if (!email || typeof email !== 'string') {
       return Response.json({ error: 'Email requerido' }, { status: 400 })
+    }
+    if (!nombre || typeof nombre !== 'string' || nombre.length > 200) {
+      return Response.json({ error: 'Nombre inválido' }, { status: 400 })
+    }
+    if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
+      return Response.json({ error: 'Items inválidos' }, { status: 400 })
+    }
+    if (typeof total !== 'number' || total <= 0) {
+      return Response.json({ error: 'Total inválido' }, { status: 400 })
     }
 
     const itemsHTML = items.map(item => `
       <tr>
         <td style="padding: 10px 0; border-bottom: 1px solid #f0ede8; font-family: 'Helvetica Neue', sans-serif; font-size: 14px; color: #2d2d2d;">
-          ${item.emoji || ''} ${item.nombre} <span style="color: #999;">×${item.cantidad}</span>
+          ${escapeHtml(item.emoji)} ${escapeHtml(item.nombre)} <span style="color: #999;">×${Number(item.cantidad) || 0}</span>
         </td>
         <td style="padding: 10px 0; border-bottom: 1px solid #f0ede8; font-family: 'Helvetica Neue', sans-serif; font-size: 14px; color: #2d2d2d; text-align: right;">
-          $${(item.precioNum * item.cantidad).toLocaleString('es-AR')}
+          $${(Number(item.precioNum) * Number(item.cantidad)).toLocaleString('es-AR')}
         </td>
       </tr>
     `).join('')
@@ -47,7 +64,7 @@ export async function POST(request) {
                     <tr>
                       <td style="background-color: #ffffff; padding: 40px 40px 24px 40px; border-bottom: 1px solid #f0ede8;">
                         <p style="margin: 0 0 8px 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #c8a96e; font-weight: 300;">Pedido recibido</p>
-                        <h2 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 26px; color: #2d2d2d; font-weight: 400;">¡Gracias, ${nombre}!</h2>
+                        <h2 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 26px; color: #2d2d2d; font-weight: 400;">¡Gracias, ${escapeHtml(nombre)}!</h2>
                         <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.6;">Tu pedido fue recibido correctamente. Nos vamos a estar comunicando por <strong>WhatsApp</strong> para coordinar la entrega.</p>
                       </td>
                     </tr>
@@ -70,8 +87,8 @@ export async function POST(request) {
                     <tr>
                       <td style="background-color: #f7f3ec; padding: 24px 40px; border-top: 1px solid #f0ede8;">
                         <p style="margin: 0 0 12px 0; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #999; font-weight: 300;">Datos de entrega</p>
-                        <p style="margin: 0 0 6px 0; font-size: 14px; color: #2d2d2d;">${direccion}</p>
-                        <p style="margin: 0; font-size: 14px; color: #666;">📱 ${telefono}</p>
+                        <p style="margin: 0 0 6px 0; font-size: 14px; color: #2d2d2d;">${escapeHtml(direccion)}</p>
+                        <p style="margin: 0; font-size: 14px; color: #666;">📱 ${escapeHtml(telefono)}</p>
                       </td>
                     </tr>
 
@@ -79,7 +96,7 @@ export async function POST(request) {
                     <tr>
                       <td style="background-color: #1a1a1a; padding: 28px 40px; text-align: center;">
                         <p style="margin: 0; font-size: 13px; color: rgba(247,243,236,0.7); line-height: 1.6;">
-                          Te contactaremos por WhatsApp al <strong style="color: #f7f3ec;">${telefono}</strong> para coordinar día y horario de entrega.
+                          Te contactaremos por WhatsApp al <strong style="color: #f7f3ec;">${escapeHtml(telefono)}</strong> para coordinar día y horario de entrega.
                         </p>
                       </td>
                     </tr>

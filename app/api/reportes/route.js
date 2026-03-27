@@ -7,6 +7,12 @@ const supabase = createClient(
 
 export async function GET(request) {
   try {
+    // Verificar token de admin
+    const authHeader = request.headers.get('x-admin-token')
+    if (!authHeader || authHeader !== process.env.ADMIN_SECRET) {
+      return Response.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const periodo = searchParams.get('periodo') || 'semana'
 

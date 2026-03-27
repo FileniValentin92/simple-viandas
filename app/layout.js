@@ -4,8 +4,25 @@ import { AuthProvider } from './components/AuthContext'
 import CarritoDrawer from './components/CarritoDrawer'
 
 export const metadata = {
-  title: "SIMPLE — Viandas al vacío",
-  description: "Comida real, lista en 10 minutos",
+  title: {
+    default: "SIMPLE — Viandas al vacío",
+    template: "%s | SIMPLE Viandas",
+  },
+  description: "Viandas caseras al vacío, sin conservantes. 15 platos fijos listos en 10 minutos. Entregas en La Plata y alrededores.",
+  keywords: ["viandas", "comida casera", "al vacío", "La Plata", "delivery", "viandas congeladas", "comida saludable"],
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    siteName: "SIMPLE Viandas",
+    title: "SIMPLE — Viandas al vacío",
+    description: "Viandas caseras al vacío, sin conservantes. 15 platos fijos listos en 10 minutos.",
+  },
+  twitter: {
+    card: "summary",
+    title: "SIMPLE — Viandas al vacío",
+    description: "Viandas caseras al vacío, sin conservantes. 15 platos fijos listos en 10 minutos.",
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://simpleviandas.com.ar"),
 }
 
 export const viewport = {

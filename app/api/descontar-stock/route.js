@@ -7,11 +7,17 @@ const supabase = createClient(
 
 export async function POST(request) {
   try {
-    const { items } = await request.json()
+    const body = await request.json()
+    const { items } = body
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return Response.json({ error: 'Items inválidos' }, { status: 400 })
+    }
 
     for (const item of items) {
-      const nombre = item.nombre
-      const cantidad = item.cantidad
+      const nombre = String(item.nombre || '').slice(0, 200)
+      const cantidad = Math.max(0, Number(item.cantidad) || 0)
+      if (!nombre || cantidad <= 0) continue
 
       const { data: stockActual, error: errorLectura } = await supabase
         .from('stock')

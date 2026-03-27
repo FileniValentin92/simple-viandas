@@ -7,6 +7,7 @@ import Footer from '../components/Footer'
 import { useCart } from '../components/CartContext'
 import { useAuth } from '../components/AuthContext'
 import { supabase } from '../lib/supabaseClient'
+import { catalogoPlatos } from '../data/platos'
 
 const PUNTOS_PARA_CANJE = 300
 
@@ -16,24 +17,6 @@ const niveles = [
   { nombre: 'Frecuente', desde: 800,  hasta: 1999,     color: '#636E43' },
   { nombre: 'VIP',       desde: 2000, hasta: Infinity,  color: '#0E0E0C' },
 ]
-
-const catalogoPlatos = {
-  'Milanesa napolitana':   { emoji: '🍖', precio: '$8.900', precioNum: 8900, puntos: '+45 pts' },
-  'Carne al verdeo':       { emoji: '🥩', precio: '$9.200', precioNum: 9200, puntos: '+46 pts' },
-  'Tuco de carne':         { emoji: '🫕', precio: '$8.200', precioNum: 8200, puntos: '+41 pts' },
-  'Pollo al limón':        { emoji: '🍗', precio: '$8.500', precioNum: 8500, puntos: '+43 pts' },
-  'Pollo al verdeo':       { emoji: '🍗', precio: '$8.300', precioNum: 8300, puntos: '+42 pts' },
-  'Suprema a la maryland': { emoji: '🍗', precio: '$8.600', precioNum: 8600, puntos: '+43 pts' },
-  'Tarta de verdura':      { emoji: '🥦', precio: '$7.800', precioNum: 7800, puntos: '+39 pts' },
-  'Tortilla de papas':     { emoji: '🍳', precio: '$7.500', precioNum: 7500, puntos: '+38 pts' },
-  'Guiso de lentejas':     { emoji: '🫘', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
-  'Ñoquis con salsa rosa': { emoji: '🍝', precio: '$8.100', precioNum: 8100, puntos: '+41 pts' },
-  'Fideos con tuco':       { emoji: '🍝', precio: '$7.900', precioNum: 7900, puntos: '+40 pts' },
-  'Lasagna de carne':      { emoji: '🍝', precio: '$9.100', precioNum: 9100, puntos: '+46 pts' },
-  'Merluza al vapor':      { emoji: '🐟', precio: '$9.500', precioNum: 9500, puntos: '+48 pts' },
-  'Salmon con limón':      { emoji: '🐟', precio: '$10.200', precioNum: 10200, puntos: '+51 pts' },
-  'Cazuela de mariscos':   { emoji: '🥘', precio: '$10.500', precioNum: 10500, puntos: '+53 pts' },
-}
 
 const estadoColor = {
   pendiente:   { bg: 'rgba(184,154,94,0.1)',  color: '#B89A5E' },

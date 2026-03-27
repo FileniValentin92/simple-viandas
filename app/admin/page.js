@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-const ADMIN_PASSWORD = 'simple2026'
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'simple2026'
 
 const estadoColores = {
   pendiente:  { bg: '#FFF3CD', color: '#856404', label: 'Pendiente' },
@@ -69,7 +69,9 @@ export default function AdminPage() {
   const cargarReporte = async (p) => {
     setCargandoReporte(true)
     try {
-      const res = await fetch(`/api/reportes?periodo=${p}`)
+      const res = await fetch(`/api/reportes?periodo=${p}`, {
+        headers: { 'x-admin-token': password },
+      })
       const data = await res.json()
       setReporte(data)
       if (p === 'semana') {
