@@ -313,7 +313,7 @@ export default function AdminPage() {
     const w = window.open('', '_blank')
     w.document.write(`<!DOCTYPE html><html><head><title>Pedido ${nroPedido} - SIMPLE</title>
 <style>
-  @page { size: A4 portrait; margin: 30mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 13px; line-height: 1.5; }
 
@@ -417,9 +417,13 @@ document.getElementById('btn-pdf').addEventListener('click', async function() {
     var canvas = await html2canvas(document.body, { scale: 2, useCORS: true });
     var imgData = canvas.toDataURL('image/png');
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var pageW = 210 - 60;
+    var margin = 10;
+    var pageW = 210 - margin * 2;
     var pageH = (canvas.height * pageW) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 30, 30, pageW, pageH);
+    var maxH = 297 - margin * 2;
+    if (pageH > maxH) { pageW = pageW * (maxH / pageH); pageH = maxH; }
+    var x = (210 - pageW) / 2;
+    pdf.addImage(imgData, 'PNG', x, margin, pageW, pageH);
     pdf.save('pedido-${nroPedido.replace('#','')}.pdf');
   } catch(e) { alert('Error generando PDF'); console.error(e); }
   actions.style.display = '';
