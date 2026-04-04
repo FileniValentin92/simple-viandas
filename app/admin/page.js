@@ -49,6 +49,8 @@ export default function AdminPage() {
   const [notasCocina, setNotasCocina] = useState({})
   const [vendidosSemana, setVendidosSemana] = useState({})
 
+  const [desgloseAbierto, setDesgloseAbierto] = useState(false)
+
   // Cambios pendientes del pedido abierto (estado + pago)
   const [cambiosPedido, setCambiosPedido] = useState({})
   const [guardandoCambios, setGuardandoCambios] = useState(false)
@@ -292,6 +294,69 @@ export default function AdminPage() {
   const formatPrecio = (n) => '$' + Number(n).toLocaleString('es-AR')
 
   const pedidosFiltrados = filtro === 'todos' ? pedidos : pedidos.filter(p => p.estado === filtro)
+
+  const imprimirPedido = (pedido) => {
+    const items = pedido.items || []
+    const totalViandas = items.reduce((a, i) => a + i.cantidad, 0)
+    const metodo = pagoMetodoIconos[pedido.pago_metodo] || pagoMetodoIconos.efectivo
+    const w = window.open('', '_blank', 'width=400,height=600')
+    w.document.write(`<html><head><title>Pedido #${String(pedido.id).slice(-4).toUpperCase()}</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:24px;font-size:13px;color:#222}
+      h1{font-size:18px;margin-bottom:4px}h2{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+      .sep{border-top:1px solid #ddd;margin:12px 0}.row{display:flex;justify-content:space-between;padding:4px 0}
+      .bold{font-weight:600}.small{font-size:11px;color:#888}table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid #f0f0f0}
+      @media print{body{padding:12px}}</style></head><body>
+      <h1>SIMPLE · Pedido #${String(pedido.id).slice(-4).toUpperCase()}</h1>
+      <h2>${formatFecha(pedido.created_at)}</h2>
+      <div class="sep"></div>
+      <p class="bold">${pedido.nombre}</p>
+      <p class="small">${pedido.telefono}</p>
+      <p class="small">${pedido.direccion}${pedido.piso ? ' — ' + pedido.piso : ''}</p>
+      ${pedido.comentarios ? '<p class="small" style="margin-top:6px;font-style:italic">' + pedido.comentarios + '</p>' : ''}
+      <div class="sep"></div>
+      <table>${items.map(i => '<tr><td>' + i.nombre + ' x' + i.cantidad + '</td><td style="text-align:right">' + (i.precio || '') + '</td></tr>').join('')}</table>
+      <div class="sep"></div>
+      <div class="row"><span class="bold">Total (${totalViandas} viandas)</span><span class="bold" style="font-size:16px">${formatPrecio(pedido.total)}</span></div>
+      <p class="small" style="margin-top:4px">${metodo.emoji} ${metodo.label} · ${(pagoEstadoColores[pedido.pago_estado] || pagoEstadoColores.pendiente).label}</p>
+      <p class="small">Estado: ${(estadoColores[pedido.estado] || estadoColores.pendiente).label}</p>
+      </body></html>`)
+    w.document.close()
+    setTimeout(() => { w.print() }, 300)
+  }
+
+  const imprimirDesglose = () => {
+    const fecha = new Date().toLocaleDateString('es-AR')
+    const resumen = {}
+    pedidosHoy.forEach(p => (p.items || []).forEach(i => { resumen[i.nombre] = (resumen[i.nombre] || 0) + i.cantidad }))
+    const ranking = Object.entries(resumen).sort((a, b) => b[1] - a[1])
+    const totalViandas = pedidosHoy.reduce((a, p) => a + (p.items || []).reduce((b, i) => b + i.cantidad, 0), 0)
+    const w = window.open('', '_blank', 'width=600,height=800')
+    w.document.write(`<html><head><title>Desglose ${fecha}</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:24px;font-size:13px;color:#222}
+      h1{font-size:18px;margin-bottom:4px}h2{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+      .sep{border-top:1px solid #ddd;margin:12px 0}.row{display:flex;justify-content:space-between;padding:4px 0}
+      .bold{font-weight:600}.small{font-size:11px;color:#888}table{width:100%;border-collapse:collapse}
+      td,th{padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:left}th{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px}
+      .pedido{border:1px solid #ddd;margin-bottom:10px;padding:10px 12px}
+      @media print{body{padding:12px}}</style></head><body>
+      <h1>SIMPLE · Desglose del día</h1>
+      <h2>${fecha} · ${pedidosHoy.length} pedidos · ${totalViandas} viandas · ${formatPrecio(totalHoy)}</h2>
+      <div class="sep"></div>
+      ${pedidosHoy.map(p => {
+        const est = (estadoColores[p.estado] || estadoColores.pendiente).label
+        return '<div class="pedido"><div class="row"><span class="bold">#' + String(p.id).slice(-4).toUpperCase() + ' · ' + p.nombre + '</span><span class="bold">' + formatPrecio(p.total) + '</span></div>' +
+          '<p class="small">' + p.telefono + ' · ' + p.direccion + ' · ' + est + '</p>' +
+          (p.items || []).map(i => '<div class="row small"><span>' + i.nombre + ' x' + i.cantidad + '</span><span>' + (i.precio || '') + '</span></div>').join('') +
+          '</div>'
+      }).join('')}
+      <div class="sep"></div>
+      <h2 style="margin-top:16px">RESUMEN DE VIANDAS</h2>
+      <table>${ranking.map(([n, c]) => '<tr><td>' + n + '</td><td style="text-align:right" class="bold">x' + c + '</td></tr>').join('')}
+      <tr style="border-top:2px solid #222"><td class="bold">Total</td><td style="text-align:right" class="bold">x${totalViandas}</td></tr></table>
+      </body></html>`)
+    w.document.close()
+    setTimeout(() => { w.print() }, 300)
+  }
   const hoy = new Date().toDateString()
   const pedidosHoy = pedidos.filter(p => new Date(p.created_at).toDateString() === hoy)
   const totalHoy = pedidosHoy.reduce((acc, p) => acc + p.total, 0)
@@ -366,7 +431,10 @@ export default function AdminPage() {
                 </button>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: pedidoAbierto ? '1fr 420px' : '1fr', gap: '20px', alignItems: 'start' }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+              <button onClick={() => setDesgloseAbierto(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #E0E0E0', background: '#fff', fontSize: '12px', fontFamily: 'Jost, sans-serif', cursor: 'pointer', color: 'var(--black)' }}>📋 Desglose del día</button>
+            </div>
+            <div>
               <div style={{ background: '#fff', border: '1px solid #E0E0E0' }}>
                 {cargando ? (
                   <div style={{ padding: '48px', textAlign: 'center', color: '#999', fontSize: '13px' }}>Cargando pedidos...</div>
@@ -417,108 +485,202 @@ export default function AdminPage() {
                   </table>
                 )}
               </div>
-              {pedidoAbierto && (
-                <div style={{ background: '#fff', border: '1px solid #E0E0E0', position: 'sticky', top: '20px' }}>
-                  <div style={{ background: 'var(--black)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--cream)', fontWeight: '400' }}>Detalle del pedido</p>
-                    <button onClick={() => { setPedidoAbierto(null); setConfirmandoBorrar(false) }} style={{ background: 'transparent', border: 'none', color: 'var(--cream)', cursor: 'pointer', fontSize: '18px', opacity: 0.6 }}>✕</button>
-                  </div>
-                  <div style={{ padding: '20px' }}>
-                    <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
-                      <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '10px' }}>Cliente</p>
-                      <p style={{ fontSize: '15px', color: 'var(--black)', fontWeight: '400', marginBottom: '4px' }}>{pedidoAbierto.nombre}</p>
-                      <p style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>📱 {pedidoAbierto.telefono}</p>
-                      <p style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>📍 {pedidoAbierto.direccion}{pedidoAbierto.piso ? ` — ${pedidoAbierto.piso}` : ''}</p>
-                      {pedidoAbierto.comentarios && <p style={{ fontSize: '12px', color: '#999', marginTop: '8px', fontStyle: 'italic' }}>💬 {pedidoAbierto.comentarios}</p>}
-                      <p style={{ fontSize: '11px', color: '#bbb', marginTop: '8px' }}>{formatFecha(pedidoAbierto.created_at)}</p>
-                    </div>
-                    <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
-                      <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Platos</p>
-                      {Array.isArray(pedidoAbierto.items) && pedidoAbierto.items.map((item, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '20px' }}>{item.emoji}</span>
-                            <div>
-                              <p style={{ fontSize: '13px', color: 'var(--black)' }}>{item.nombre}</p>
-                              <p style={{ fontSize: '11px', color: '#999' }}>x{item.cantidad}</p>
-                            </div>
-                          </div>
-                          <span style={{ fontSize: '13px', color: 'var(--black)' }}>{item.precio}</span>
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #F0F0F0', paddingTop: '12px', marginTop: '8px' }}>
-                        <span style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999' }}>Total</span>
-                        <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>{formatPrecio(pedidoAbierto.total)}</span>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
-                      <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Pago</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '18px' }}>{pagoMetodoIconos[pedidoAbierto.pago_metodo]?.emoji || '💵'}</span>
-                        <span style={{ fontSize: '14px', color: 'var(--black)' }}>{pagoMetodoIconos[pedidoAbierto.pago_metodo]?.label || 'Efectivo'}</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        {Object.entries(pagoEstadoColores).map(([key, val]) => {
-                          const activo = (cambiosPedido.pago_estado || pedidoAbierto.pago_estado) === key
-                          return (
-                            <button key={key} onClick={() => setPagoEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}60` : '1px solid #E0E0E0', padding: '10px 12px', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
-                              {activo ? '● ' : '○ '}{val.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
-                      <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Estado del pedido</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {Object.entries(estadoColores).map(([key, val]) => {
-                          const activo = (cambiosPedido.estado || pedidoAbierto.estado) === key
-                          return (
-                            <button key={key} onClick={() => setEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}40` : '1px solid #E0E0E0', padding: '10px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', textAlign: 'left' }}>
-                              {activo ? '● ' : '○ '}{val.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    {/* Botón guardar cambios */}
-                    {Object.keys(cambiosPedido).length > 0 && (
-                      <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
-                        <button onClick={guardarCambiosPedido} disabled={guardandoCambios} style={{
-                          width: '100%', background: guardandoCambios ? '#999' : 'var(--black)', color: 'var(--cream)',
-                          border: 'none', padding: '14px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
-                          fontFamily: 'Jost, sans-serif', cursor: guardandoCambios ? 'not-allowed' : 'pointer', fontWeight: '400',
-                        }}>
-                          {guardandoCambios ? 'Guardando...' : '✓ GUARDAR CAMBIOS'}
-                        </button>
-                        {cambiosPedido.pago_estado === 'pagado' && pedidoAbierto.pago_estado === 'pendiente' && pedidoAbierto.pago_metodo === 'efectivo' && pedidoAbierto.puntos > 0 && (
-                          <p style={{ fontSize: '11px', color: 'var(--olive)', marginTop: '8px', textAlign: 'center' }}>
-                            Se sumarán +{pedidoAbierto.puntos} pts al cliente
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <div>
-                      {!confirmandoBorrar ? (
-                        <button onClick={() => setConfirmandoBorrar(true)} style={{ width: '100%', background: 'transparent', border: '1px solid #F8D7DA', color: '#721C24', padding: '10px 16px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>🗑 Eliminar pedido</button>
-                      ) : (
-                        <div style={{ background: '#FFF5F5', border: '1px solid #F8D7DA', padding: '16px' }}>
-                          <p style={{ fontSize: '12px', color: '#721C24', marginBottom: '12px', textAlign: 'center' }}>¿Confirmar eliminación? Esta acción no se puede deshacer.</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                            <button onClick={() => setConfirmandoBorrar(false)} style={{ background: '#fff', border: '1px solid #E0E0E0', color: '#666', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>Cancelar</button>
-                            <button onClick={() => borrarPedido(pedidoAbierto.id)} disabled={borrando} style={{ background: '#721C24', border: 'none', color: '#fff', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: borrando ? 'not-allowed' : 'pointer' }}>
-                              {borrando ? 'Borrando...' : 'Sí, eliminar'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </>
+        )}
+
+        {/* ── MODAL DETALLE PEDIDO ── */}
+        {pedidoAbierto && (
+          <div onClick={() => { setPedidoAbierto(null); setConfirmandoBorrar(false); setCambiosPedido({}) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ background: 'var(--black)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1 }}>
+                <div>
+                  <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'var(--gold)', marginBottom: '2px' }}>PEDIDO #{String(pedidoAbierto.id).slice(-4).toUpperCase()}</p>
+                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '18px', color: 'var(--cream)' }}>Detalle del pedido</p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => imprimirPedido(pedidoAbierto)} style={{ background: 'transparent', border: '1px solid rgba(247,243,236,0.3)', color: 'var(--cream)', padding: '6px 12px', fontSize: '9px', letterSpacing: '1px', cursor: 'pointer', fontFamily: 'Jost, sans-serif' }}>🖨 IMPRIMIR</button>
+                  <button onClick={() => { setPedidoAbierto(null); setConfirmandoBorrar(false); setCambiosPedido({}) }} style={{ background: 'transparent', border: 'none', color: 'var(--cream)', cursor: 'pointer', fontSize: '20px', opacity: 0.6 }}>✕</button>
+                </div>
+              </div>
+              <div style={{ padding: '24px' }}>
+                {/* Cliente */}
+                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '10px' }}>Cliente</p>
+                  <p style={{ fontSize: '15px', color: 'var(--black)', fontWeight: '400', marginBottom: '4px' }}>{pedidoAbierto.nombre}</p>
+                  <p style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>📱 {pedidoAbierto.telefono}</p>
+                  <p style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>📍 {pedidoAbierto.direccion}{pedidoAbierto.piso ? ` — ${pedidoAbierto.piso}` : ''}</p>
+                  {pedidoAbierto.comentarios && <p style={{ fontSize: '12px', color: '#999', marginTop: '8px', fontStyle: 'italic' }}>💬 {pedidoAbierto.comentarios}</p>}
+                  <p style={{ fontSize: '11px', color: '#bbb', marginTop: '8px' }}>{formatFecha(pedidoAbierto.created_at)}</p>
+                </div>
+                {/* Platos */}
+                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Platos</p>
+                  {Array.isArray(pedidoAbierto.items) && pedidoAbierto.items.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '20px' }}>{item.emoji}</span>
+                        <div>
+                          <p style={{ fontSize: '13px', color: 'var(--black)' }}>{item.nombre}</p>
+                          <p style={{ fontSize: '11px', color: '#999' }}>x{item.cantidad}</p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '13px', color: 'var(--black)' }}>{item.precio}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #F0F0F0', paddingTop: '12px', marginTop: '8px' }}>
+                    <span style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999' }}>Total</span>
+                    <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>{formatPrecio(pedidoAbierto.total)}</span>
+                  </div>
+                </div>
+                {/* Pago */}
+                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Pago</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '18px' }}>{pagoMetodoIconos[pedidoAbierto.pago_metodo]?.emoji || '💵'}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--black)' }}>{pagoMetodoIconos[pedidoAbierto.pago_metodo]?.label || 'Efectivo'}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {Object.entries(pagoEstadoColores).map(([key, val]) => {
+                      const activo = (cambiosPedido.pago_estado || pedidoAbierto.pago_estado) === key
+                      return (
+                        <button key={key} onClick={() => setPagoEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}60` : '1px solid #E0E0E0', padding: '10px 12px', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
+                          {activo ? '● ' : '○ '}{val.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {/* Estado */}
+                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Estado del pedido</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {Object.entries(estadoColores).map(([key, val]) => {
+                      const activo = (cambiosPedido.estado || pedidoAbierto.estado) === key
+                      return (
+                        <button key={key} onClick={() => setEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}40` : '1px solid #E0E0E0', padding: '10px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', textAlign: 'left' }}>
+                          {activo ? '● ' : '○ '}{val.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {/* Guardar */}
+                {Object.keys(cambiosPedido).length > 0 && (
+                  <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                    <button onClick={guardarCambiosPedido} disabled={guardandoCambios} style={{
+                      width: '100%', background: guardandoCambios ? '#999' : 'var(--black)', color: 'var(--cream)',
+                      border: 'none', padding: '14px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                      fontFamily: 'Jost, sans-serif', cursor: guardandoCambios ? 'not-allowed' : 'pointer',
+                    }}>
+                      {guardandoCambios ? 'Guardando...' : '✓ GUARDAR CAMBIOS'}
+                    </button>
+                    {cambiosPedido.pago_estado === 'pagado' && pedidoAbierto.pago_estado === 'pendiente' && pedidoAbierto.pago_metodo === 'efectivo' && pedidoAbierto.puntos > 0 && (
+                      <p style={{ fontSize: '11px', color: 'var(--olive)', marginTop: '8px', textAlign: 'center' }}>Se sumarán +{pedidoAbierto.puntos} pts al cliente</p>
+                    )}
+                  </div>
+                )}
+                {/* Eliminar */}
+                <div>
+                  {!confirmandoBorrar ? (
+                    <button onClick={() => setConfirmandoBorrar(true)} style={{ width: '100%', background: 'transparent', border: '1px solid #F8D7DA', color: '#721C24', padding: '10px 16px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>🗑 Eliminar pedido</button>
+                  ) : (
+                    <div style={{ background: '#FFF5F5', border: '1px solid #F8D7DA', padding: '16px' }}>
+                      <p style={{ fontSize: '12px', color: '#721C24', marginBottom: '12px', textAlign: 'center' }}>¿Confirmar eliminación? Esta acción no se puede deshacer.</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button onClick={() => setConfirmandoBorrar(false)} style={{ background: '#fff', border: '1px solid #E0E0E0', color: '#666', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>Cancelar</button>
+                        <button onClick={() => borrarPedido(pedidoAbierto.id)} disabled={borrando} style={{ background: '#721C24', border: 'none', color: '#fff', padding: '10px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: borrando ? 'not-allowed' : 'pointer' }}>
+                          {borrando ? 'Borrando...' : 'Sí, eliminar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL DESGLOSE DEL DÍA ── */}
+        {desgloseAbierto && (
+          <div onClick={() => setDesgloseAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ background: 'var(--black)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1 }}>
+                <div>
+                  <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'var(--gold)', marginBottom: '2px' }}>DESGLOSE</p>
+                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '18px', color: 'var(--cream)' }}>Pedidos del día</p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => imprimirDesglose()} style={{ background: 'transparent', border: '1px solid rgba(247,243,236,0.3)', color: 'var(--cream)', padding: '6px 12px', fontSize: '9px', letterSpacing: '1px', cursor: 'pointer', fontFamily: 'Jost, sans-serif' }}>🖨 IMPRIMIR</button>
+                  <button onClick={() => setDesgloseAbierto(false)} style={{ background: 'transparent', border: 'none', color: 'var(--cream)', cursor: 'pointer', fontSize: '20px', opacity: 0.6 }}>✕</button>
+                </div>
+              </div>
+              <div style={{ padding: '24px' }}>
+                {pedidosHoy.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#999', padding: '32px', fontSize: '13px' }}>No hay pedidos hoy</p>
+                ) : (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                      <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
+                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.length}</p>
+                        <p style={{ fontSize: '10px', color: '#999' }}>pedidos</p>
+                      </div>
+                      <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
+                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.reduce((a, p) => a + (p.items || []).reduce((b, i) => b + i.cantidad, 0), 0)}</p>
+                        <p style={{ fontSize: '10px', color: '#999' }}>viandas</p>
+                      </div>
+                      <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
+                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{formatPrecio(totalHoy)}</p>
+                        <p style={{ fontSize: '10px', color: '#999' }}>recaudado</p>
+                      </div>
+                    </div>
+
+                    {pedidosHoy.map(pedido => {
+                      const est = estadoColores[pedido.estado] || estadoColores.pendiente
+                      return (
+                        <div key={pedido.id} style={{ border: '1px solid #E0E0E0', marginBottom: '12px' }}>
+                          <div style={{ background: '#FAFAFA', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0' }}>
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '14px', fontWeight: '400' }}>#{String(pedido.id).slice(-4).toUpperCase()}</span>
+                              <span style={{ fontSize: '12px', color: '#666' }}>{pedido.nombre}</span>
+                              <span style={{ fontSize: '11px', color: '#999' }}>{pedido.telefono}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span style={{ background: est.bg, color: est.color, padding: '2px 8px', fontSize: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>{est.label}</span>
+                              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '14px' }}>{formatPrecio(pedido.total)}</span>
+                            </div>
+                          </div>
+                          <div style={{ padding: '10px 16px' }}>
+                            {(pedido.items || []).map((item, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', color: '#444' }}>
+                                <span>{item.emoji} {item.nombre} x{item.cantidad}</span>
+                                <span style={{ color: '#999' }}>{item.precio}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {/* Resumen de viandas del día */}
+                    <div style={{ borderTop: '2px solid var(--black)', paddingTop: '16px', marginTop: '8px' }}>
+                      <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>RESUMEN DE VIANDAS DEL DÍA</p>
+                      {(() => {
+                        const resumen = {}
+                        pedidosHoy.forEach(p => (p.items || []).forEach(i => { resumen[i.nombre] = (resumen[i.nombre] || 0) + i.cantidad }))
+                        return Object.entries(resumen).sort((a, b) => b[1] - a[1]).map(([nombre, cant]) => (
+                          <div key={nombre} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F0F0F0', fontSize: '13px' }}>
+                            <span style={{ color: '#444' }}>{nombre}</span>
+                            <span style={{ fontWeight: '500', color: 'var(--black)' }}>x{cant}</span>
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── STOCK ── */}
