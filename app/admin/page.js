@@ -626,7 +626,7 @@ export default function AdminPage() {
                         <p style={{ fontSize: '10px', color: '#999' }}>pedidos</p>
                       </div>
                       <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
-                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.reduce((a, p) => a + (p.items || []).reduce((b, i) => b + i.cantidad, 0), 0)}</p>
+                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.reduce((a, p) => a + (Array.isArray(p.items) ? p.items : []).reduce((b, i) => b + (i?.cantidad || 0), 0), 0)}</p>
                         <p style={{ fontSize: '10px', color: '#999' }}>viandas</p>
                       </div>
                       <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
@@ -651,10 +651,10 @@ export default function AdminPage() {
                             </div>
                           </div>
                           <div style={{ padding: '10px 16px' }}>
-                            {(pedido.items || []).map((item, i) => (
+                            {(Array.isArray(pedido.items) ? pedido.items : []).map((item, i) => (
                               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', color: '#444' }}>
-                                <span>{item.emoji} {item.nombre} x{item.cantidad}</span>
-                                <span style={{ color: '#999' }}>{item.precio}</span>
+                                <span>{item?.emoji || ''} {item?.nombre || 'Sin nombre'} x{item?.cantidad || 0}</span>
+                                <span style={{ color: '#999' }}>{item?.precio || ''}</span>
                               </div>
                             ))}
                           </div>
@@ -665,16 +665,17 @@ export default function AdminPage() {
                     {/* Resumen de viandas del día */}
                     <div style={{ borderTop: '2px solid var(--black)', paddingTop: '16px', marginTop: '8px' }}>
                       <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>RESUMEN DE VIANDAS DEL DÍA</p>
-                      {(() => {
-                        const resumen = {}
-                        pedidosHoy.forEach(p => (p.items || []).forEach(i => { resumen[i.nombre] = (resumen[i.nombre] || 0) + i.cantidad }))
-                        return Object.entries(resumen).sort((a, b) => b[1] - a[1]).map(([nombre, cant]) => (
-                          <div key={nombre} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F0F0F0', fontSize: '13px' }}>
-                            <span style={{ color: '#444' }}>{nombre}</span>
-                            <span style={{ fontWeight: '500', color: 'var(--black)' }}>x{cant}</span>
-                          </div>
-                        ))
-                      })()}
+                      {Object.entries(
+                        pedidosHoy.reduce((res, p) => {
+                          (p.items || []).forEach(i => { if (i.nombre) res[i.nombre] = (res[i.nombre] || 0) + (i.cantidad || 1) })
+                          return res
+                        }, {})
+                      ).sort((a, b) => b[1] - a[1]).map(([nombre, cant], idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F0F0F0', fontSize: '13px' }}>
+                          <span style={{ color: '#444' }}>{nombre}</span>
+                          <span style={{ fontWeight: '500', color: 'var(--black)' }}>x{cant}</span>
+                        </div>
+                      ))}
                     </div>
                   </>
                 )}
