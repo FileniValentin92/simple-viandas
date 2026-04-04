@@ -376,7 +376,7 @@ export default function AdminPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                        {['Fecha', 'Cliente', 'Dirección', 'Total', 'Pago', 'Estado pedido', ''].map(h => (
+                        {['N°', 'Fecha', 'Cliente', 'Dirección', 'Total', 'Pago', 'Estado pedido', ''].map(h => (
                           <th key={h} style={{ padding: '12px 16px', fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', fontWeight: '400', textAlign: 'left' }}>{h}</th>
                         ))}
                       </tr>
@@ -390,6 +390,7 @@ export default function AdminPage() {
                         return (
                           <tr key={pedido.id} style={{ borderBottom: '1px solid #F0F0F0', background: activo ? '#FAFAFA' : '#fff', cursor: 'pointer' }}
                             onClick={() => { setPedidoAbierto(activo ? null : pedido); setConfirmandoBorrar(false); setCambiosPedido({}) }}>
+                            <td style={{ padding: '14px 16px', fontFamily: 'Playfair Display, serif', fontSize: '14px', color: 'var(--black)', fontWeight: '400', whiteSpace: 'nowrap' }}>#{String(pedido.id).slice(-4).toUpperCase()}</td>
                             <td style={{ padding: '14px 16px', fontSize: '12px', color: '#666', whiteSpace: 'nowrap' }}>{formatFecha(pedido.created_at)}</td>
                             <td style={{ padding: '14px 16px' }}>
                               <p style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '400', marginBottom: '2px' }}>{pedido.nombre}</p>
