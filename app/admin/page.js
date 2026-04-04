@@ -103,15 +103,16 @@ export default function AdminPage() {
     setCambiosPedido(prev => ({ ...prev, pago_estado: nuevoPago }))
   }
 
-  // Guardar cambios en DB + sumar puntos si corresponde
+  // Guardar cambios en DB via API route (bypasses RLS)
   const guardarCambiosPedido = async () => {
     if (!pedidoAbierto || Object.keys(cambiosPedido).length === 0) return
     setGuardandoCambios(true)
     const id = pedidoAbierto.id
     try {
-      await supabase.from('pedidos').update(cambiosPedido).eq('id', id)
+      // Build request body
+      const body = { id, cambios: cambiosPedido }
 
-      // Si pago_estado cambió de pendiente a pagado Y es efectivo → sumar puntos ganados
+      // If pago_estado changed to pagado from pendiente + efectivo → ask server to add points
       if (
         cambiosPedido.pago_estado === 'pagado' &&
         pedidoAbierto.pago_estado === 'pendiente' &&
@@ -119,10 +120,25 @@ export default function AdminPage() {
         pedidoAbierto.user_id &&
         pedidoAbierto.puntos > 0
       ) {
-        const { data: perfil } = await supabase.from('perfiles').select('puntos').eq('id', pedidoAbierto.user_id).single()
-        if (perfil) {
-          await supabase.from('perfiles').update({ puntos: (perfil.puntos ?? 0) + pedidoAbierto.puntos }).eq('id', pedidoAbierto.user_id)
-        }
+        body.sumarPuntos = { userId: pedidoAbierto.user_id, puntos: pedidoAbierto.puntos }
+      }
+
+      const res = await fetch('/api/admin/actualizar-pedido', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': password,
+        },
+        body: JSON.stringify(body),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        console.error('Error guardando cambios:', result.error)
+        alert('Error al guardar: ' + (result.error || 'Error desconocido'))
+        setGuardandoCambios(false)
+        return
       }
 
       // Actualizar estado local
@@ -132,14 +148,33 @@ export default function AdminPage() {
       setCambiosPedido({})
     } catch (err) {
       console.error('Error guardando cambios:', err)
+      alert('Error de red al guardar cambios')
     }
     setGuardandoCambios(false)
   }
 
   const borrarPedido = async (id) => {
     setBorrando(true)
-    const { error } = await supabase.from('pedidos').delete().eq('id', id)
-    if (!error) { setPedidos(prev => prev.filter(p => p.id !== id)); setPedidoAbierto(null); setConfirmandoBorrar(false) }
+    try {
+      const res = await fetch('/api/admin/borrar-pedido', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': password,
+        },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) {
+        setPedidos(prev => prev.filter(p => p.id !== id))
+        setPedidoAbierto(null)
+        setConfirmandoBorrar(false)
+      } else {
+        const result = await res.json()
+        console.error('Error borrando pedido:', result.error)
+      }
+    } catch (err) {
+      console.error('Error borrando pedido:', err)
+    }
     setBorrando(false)
   }
 
