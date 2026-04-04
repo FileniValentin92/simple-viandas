@@ -293,10 +293,17 @@ export default function AdminPage() {
   }
   const formatPrecio = (n) => '$' + Number(n).toLocaleString('es-AR')
 
+  // Parsear items de forma segura (puede ser array, string JSON, o null)
+  const safeItems = (items) => {
+    if (Array.isArray(items)) return items
+    if (typeof items === 'string') { try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] } }
+    return []
+  }
+
   const pedidosFiltrados = filtro === 'todos' ? pedidos : pedidos.filter(p => p.estado === filtro)
 
   const imprimirPedido = (pedido) => {
-    const items = pedido.items || []
+    const items = safeItems(pedido.items)
     const totalViandas = items.reduce((a, i) => a + i.cantidad, 0)
     const metodo = pagoMetodoIconos[pedido.pago_metodo] || pagoMetodoIconos.efectivo
     const w = window.open('', '_blank', 'width=400,height=600')
@@ -327,9 +334,9 @@ export default function AdminPage() {
   const imprimirDesglose = () => {
     const fecha = new Date().toLocaleDateString('es-AR')
     const resumen = {}
-    pedidosHoy.forEach(p => (p.items || []).forEach(i => { resumen[i.nombre] = (resumen[i.nombre] || 0) + i.cantidad }))
+    pedidosHoy.forEach(p => safeItems(p.items).forEach(i => { resumen[i.nombre] = (resumen[i.nombre] || 0) + i.cantidad }))
     const ranking = Object.entries(resumen).sort((a, b) => b[1] - a[1])
-    const totalViandas = pedidosHoy.reduce((a, p) => a + (p.items || []).reduce((b, i) => b + i.cantidad, 0), 0)
+    const totalViandas = pedidosHoy.reduce((a, p) => a + safeItems(p.items).reduce((b, i) => b + (i?.cantidad || 0), 0), 0)
     const w = window.open('', '_blank', 'width=600,height=800')
     w.document.write(`<html><head><title>Desglose ${fecha}</title>
       <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:24px;font-size:13px;color:#222}
@@ -346,7 +353,7 @@ export default function AdminPage() {
         const est = (estadoColores[p.estado] || estadoColores.pendiente).label
         return '<div class="pedido"><div class="row"><span class="bold">#' + String(p.id).slice(-4).toUpperCase() + ' · ' + p.nombre + '</span><span class="bold">' + formatPrecio(p.total) + '</span></div>' +
           '<p class="small">' + p.telefono + ' · ' + p.direccion + ' · ' + est + '</p>' +
-          (p.items || []).map(i => '<div class="row small"><span>' + i.nombre + ' x' + i.cantidad + '</span><span>' + (i.precio || '') + '</span></div>').join('') +
+          safeItems(p.items).map(i => '<div class="row small"><span>' + i.nombre + ' x' + i.cantidad + '</span><span>' + (i.precio || '') + '</span></div>').join('') +
           '</div>'
       }).join('')}
       <div class="sep"></div>
@@ -516,7 +523,7 @@ export default function AdminPage() {
                 {/* Platos */}
                 <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
                   <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Platos</p>
-                  {Array.isArray(pedidoAbierto.items) && pedidoAbierto.items.map((item, i) => (
+                  {safeItems(pedidoAbierto.items).map((item, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '20px' }}>{item.emoji}</span>
@@ -626,7 +633,7 @@ export default function AdminPage() {
                         <p style={{ fontSize: '10px', color: '#999' }}>pedidos</p>
                       </div>
                       <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
-                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.reduce((a, p) => a + (Array.isArray(p.items) ? p.items : []).reduce((b, i) => b + (i?.cantidad || 0), 0), 0)}</p>
+                        <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '24px', color: 'var(--black)' }}>{pedidosHoy.reduce((a, p) => a + safeItems(p.items).reduce((b, i) => b + (i?.cantidad || 0), 0), 0)}</p>
                         <p style={{ fontSize: '10px', color: '#999' }}>viandas</p>
                       </div>
                       <div style={{ background: '#F9F9F9', padding: '14px', textAlign: 'center' }}>
@@ -651,7 +658,7 @@ export default function AdminPage() {
                             </div>
                           </div>
                           <div style={{ padding: '10px 16px' }}>
-                            {(Array.isArray(pedido.items) ? pedido.items : []).map((item, i) => (
+                            {safeItems(pedido.items).map((item, i) => (
                               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', color: '#444' }}>
                                 <span>{item?.emoji || ''} {item?.nombre || 'Sin nombre'} x{item?.cantidad || 0}</span>
                                 <span style={{ color: '#999' }}>{item?.precio || ''}</span>
@@ -667,7 +674,7 @@ export default function AdminPage() {
                       <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>RESUMEN DE VIANDAS DEL DÍA</p>
                       {Object.entries(
                         pedidosHoy.reduce((res, p) => {
-                          (p.items || []).forEach(i => { if (i.nombre) res[i.nombre] = (res[i.nombre] || 0) + (i.cantidad || 1) })
+                          safeItems(p.items).forEach(i => { if (i.nombre) res[i.nombre] = (res[i.nombre] || 0) + (i.cantidad || 1) })
                           return res
                         }, {})
                       ).sort((a, b) => b[1] - a[1]).map(([nombre, cant], idx) => (
