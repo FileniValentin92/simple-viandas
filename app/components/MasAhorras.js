@@ -66,7 +66,7 @@ export default function MasAhorras() {
         <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
           Los descuentos se aplican automáticamente al agregar viandas al carrito.
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--gold)', marginTop: '12px', fontFamily: 'Jost, sans-serif', fontWeight: '400', letterSpacing: '1px' }}>
+        <p style={{ fontSize: 'clamp(25px, 3.5vw, 36px)', color: 'var(--gold)', marginTop: '16px', fontFamily: 'Playfair Display, serif', fontWeight: '400' }}>
           Solo válido abonando en efectivo
         </p>
       </div>
