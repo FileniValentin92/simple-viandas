@@ -8,6 +8,7 @@ const AuthContext = createContext()
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [perfil, setPerfil] = useState(null)
+  const [pedidosCount, setPedidosCount] = useState(0)
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) cargarPerfil(session.user.id)
-      else { setPerfil(null) }
+      else { setPerfil(null); setPedidosCount(0) }
     })
 
     return () => subscription.unsubscribe()
@@ -29,16 +30,23 @@ export function AuthProvider({ children }) {
   const cargarPerfil = async (userId) => {
     const { data } = await supabase.from('perfiles').select('*').eq('id', userId).single()
     setPerfil(data)
+
+    const { count } = await supabase
+      .from('pedidos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    setPedidosCount(count || 0)
   }
 
   const cerrarSesion = async () => {
     await supabase.auth.signOut()
     setUser(null)
     setPerfil(null)
+    setPedidosCount(0)
   }
 
   return (
-    <AuthContext.Provider value={{ user, perfil, cargando, cerrarSesion, cargarPerfil }}>
+    <AuthContext.Provider value={{ user, perfil, pedidosCount, cargando, cerrarSesion, cargarPerfil }}>
       {children}
     </AuthContext.Provider>
   )

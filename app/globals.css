@@ -230,6 +230,15 @@ nav {
     grid-template-columns: 1fr;
     gap: 28px;
   }
+  .perfil-header {
+    padding: 32px 20px !important;
+  }
+  .perfil-header h1 {
+    font-size: 28px !important;
+  }
+  .perfil-puntos-cards {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ─── NAVBAR RESPONSIVE ─── */

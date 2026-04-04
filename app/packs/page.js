@@ -98,7 +98,7 @@ export default function PacksPage() {
           emoji: pack.emoji,
           precio: `$${precioPorUnidad.toLocaleString('es-AR')}`,
           precioNum: precioPorUnidad,
-          puntos: `+${Math.round(precioPorUnidad / 200)} pts`,
+          puntos: '+10 pts',
           cantidad: cant,
         }, cant)
       }

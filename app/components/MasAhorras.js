@@ -15,6 +15,8 @@ function AhorraCard({ cant, off, popular }) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '140px',
         cursor: 'pointer',
         transition: 'background 0.25s ease',
       }}
@@ -41,10 +43,10 @@ function AhorraCard({ cant, off, popular }) {
 
 export default function MasAhorras() {
   const items = [
-    { cant: '×5',  off: '$400 off' },
-    { cant: '×10', off: '$900 off' },
-    { cant: '×15', off: '$1.500 off', popular: true },
-    { cant: '×20', off: '$2.200 off' },
+    { cant: '×5',  off: '5% off' },
+    { cant: '×10', off: '10% off' },
+    { cant: '×15', off: '12% off', popular: true },
+    { cant: '×20', off: '15% off' },
   ]
 
   return (
@@ -63,6 +65,9 @@ export default function MasAhorras() {
         </div>
         <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
           Los descuentos se aplican automáticamente al agregar viandas al carrito.
+        </p>
+        <p style={{ fontSize: '12px', color: 'var(--gold)', marginTop: '12px', fontFamily: 'Jost, sans-serif', fontWeight: '400', letterSpacing: '1px' }}>
+          Solo válido abonando en efectivo
         </p>
       </div>
     </section>

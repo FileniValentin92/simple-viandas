@@ -108,12 +108,15 @@ export default function MenuPage() {
                   </Link>
                   <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', marginBottom: '16px' }}>{plato.descripcion}</p>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                    {[`⏱ ${plato.tiempo}`, '❄️ Freezer', plato.puntos].map((tag) => (
+                    {[`⏱ ${plato.tiempo}`, '❄️ Freezer'].map((tag) => (
                       <span key={tag} style={{ fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(247,243,236,0.4)', background: 'rgba(247,243,236,0.06)', padding: '4px 10px', fontWeight: '300' }}>{tag}</span>
                     ))}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: 'var(--cream)' }}>{plato.precio}</span>
+                    <div>
+                      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: 'var(--cream)' }}>{plato.precio}</span>
+                      <p style={{ fontSize: '11px', color: 'var(--olive-light)', fontWeight: '300', marginTop: '4px', fontFamily: 'Jost, sans-serif' }}>+10 pts</p>
+                    </div>
                   </div>
                   <SelectorCantidad plato={plato} />
                 </div>

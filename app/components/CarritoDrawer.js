@@ -2,9 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { useCart } from './CartContext'
+import { useAuth } from './AuthContext'
 
 export default function CarritoDrawer() {
-  const { items, abierto, setAbierto, quitarItem, agregarItem, eliminarItem, totalPrecio, totalPuntos, totalItems } = useCart()
+  const { items, abierto, setAbierto, quitarItem, agregarItem, eliminarItem, totalPrecio, totalPuntos, totalItems, calcularDescuentos } = useCart()
+  const { user, perfil, pedidosCount } = useAuth()
   const router = useRouter()
 
   const formatPrecio = (n) => '$' + n.toLocaleString('es-AR')
@@ -13,6 +15,14 @@ export default function CarritoDrawer() {
     setAbierto(false)
     router.push('/confirmar')
   }
+
+  // Calcular nivel del usuario
+  const nivel = pedidosCount >= 20 ? 'VIP' : pedidosCount >= 10 ? 'Frecuente' : 'Básico'
+  const puntosUsuario = perfil?.puntos || 0
+
+  // Calcular ahorro potencial en efectivo
+  const descuentosEfectivo = calcularDescuentos('efectivo')
+  const ahorroEfectivo = descuentosEfectivo.descuentoViandas + descuentosEfectivo.descuentoPacks
 
   return (
     <>
@@ -244,6 +254,40 @@ export default function CarritoDrawer() {
             padding: '24px 32px',
             background: 'var(--cream)',
           }}>
+            {/* Resumen de puntos del usuario */}
+            {user && perfil && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+                padding: '10px 14px',
+                background: 'rgba(74,85,48,0.06)',
+                border: '1px solid rgba(74,85,48,0.12)',
+              }}>
+                <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>
+                  Tenés {puntosUsuario.toLocaleString('es-AR')} pts · Nivel {nivel}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '400' }}>
+                  Ganás +{totalPuntos} pts
+                </span>
+              </div>
+            )}
+
+            {/* Aviso de descuento efectivo */}
+            {ahorroEfectivo > 0 && (
+              <div style={{
+                marginBottom: '12px',
+                padding: '10px 14px',
+                background: 'rgba(184,154,94,0.08)',
+                border: '1px solid rgba(184,154,94,0.2)',
+              }}>
+                <p style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '400', lineHeight: '1.5' }}>
+                  💵 Pagando en efectivo ahorrás {formatPrecio(ahorroEfectivo)} — confirmá el pedido para aplicar
+                </p>
+              </div>
+            )}
+
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -272,7 +316,7 @@ export default function CarritoDrawer() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '20px',
+              marginBottom: '4px',
             }}>
               <span style={{
                 fontSize: '10px',
@@ -291,6 +335,12 @@ export default function CarritoDrawer() {
               </span>
             </div>
 
+            {ahorroEfectivo > 0 && (
+              <p style={{ fontSize: '10px', color: '#999', fontWeight: '300', textAlign: 'right', marginBottom: '16px' }}>
+                El descuento se aplica al confirmar en efectivo
+              </p>
+            )}
+
             <button
               onClick={handleConfirmar}
               style={{
@@ -305,6 +355,7 @@ export default function CarritoDrawer() {
                 fontFamily: 'Jost, sans-serif',
                 fontWeight: '300',
                 cursor: 'pointer',
+                marginTop: ahorroEfectivo > 0 ? '0' : '16px',
               }}
             >
               Confirmar pedido
