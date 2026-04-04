@@ -63,7 +63,7 @@ export default function MasAhorras() {
             <AhorraCard key={item.cant} {...item} />
           ))}
         </div>
-        <p style={{ fontSize: 'clamp(25px, 3.5vw, 36px)', color: 'var(--gold)', marginTop: '32px', fontFamily: 'Playfair Display, serif', fontWeight: '400' }}>
+        <p className="efectivo-label" style={{ fontSize: 'clamp(25px, 3.5vw, 36px)', color: 'var(--gold)', marginTop: '32px', fontFamily: 'Playfair Display, serif', fontWeight: '400', whiteSpace: 'nowrap' }}>
           Solo válido abonando en efectivo
         </p>
         <p style={{ fontSize: '14px', color: 'var(--cream)', marginTop: '16px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
