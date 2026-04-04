@@ -363,7 +363,7 @@ export default function AdminPage() {
 
 <div class="header">
   <div class="logo">SIMPLE</div>
-  <div class="logo-sub">Viandas caseras</div>
+  <div class="logo-sub">Viandas envasadas al vacío</div>
   <div class="fecha">${fecha}</div>
   <div class="nro">Pedido ${nroPedido}</div>
 </div>
