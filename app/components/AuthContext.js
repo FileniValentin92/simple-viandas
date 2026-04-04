@@ -43,6 +43,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setPerfil(null)
     setPedidosCount(0)
+    try { localStorage.removeItem('carrito_simple') } catch (e) {}
   }
 
   return (
