@@ -404,32 +404,9 @@ export default function AdminPage() {
 
 <div class="print-actions">
   <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
-  <button class="btn-pdf" id="btn-pdf">📄 Descargar PDF</button>
+  <button class="btn-pdf" onclick="window.print()">📄 Descargar PDF</button>
+  <p style="font-size:11px;color:#999;margin-top:10px;">Para descargar como PDF, elegí "Guardar como PDF" en el destino de impresión</p>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
-<script>
-document.getElementById('btn-pdf').addEventListener('click', async function() {
-  this.textContent = 'Generando...';
-  var actions = document.querySelector('.print-actions');
-  actions.style.display = 'none';
-  try {
-    var canvas = await html2canvas(document.body, { scale: 2, useCORS: true });
-    var imgData = canvas.toDataURL('image/png');
-    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var margin = 10;
-    var pageW = 210 - margin * 2;
-    var pageH = (canvas.height * pageW) / canvas.width;
-    var maxH = 297 - margin * 2;
-    if (pageH > maxH) { pageW = pageW * (maxH / pageH); pageH = maxH; }
-    var x = (210 - pageW) / 2;
-    pdf.addImage(imgData, 'PNG', x, margin, pageW, pageH);
-    pdf.save('pedido-${nroPedido.replace('#','')}.pdf');
-  } catch(e) { alert('Error generando PDF'); console.error(e); }
-  actions.style.display = '';
-  this.textContent = '📄 Descargar PDF';
-});
-<\/script>
 
 </body></html>`)
     w.document.close()
