@@ -304,31 +304,111 @@ export default function AdminPage() {
 
   const imprimirPedido = (pedido) => {
     const items = safeItems(pedido.items)
-    const totalViandas = items.reduce((a, i) => a + i.cantidad, 0)
+    const totalViandas = items.reduce((a, i) => a + (i?.cantidad || 0), 0)
     const metodo = pagoMetodoIconos[pedido.pago_metodo] || pagoMetodoIconos.efectivo
-    const w = window.open('', '_blank', 'width=400,height=600')
-    w.document.write(`<html><head><title>Pedido #${String(pedido.id).slice(-4).toUpperCase()}</title>
-      <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:24px;font-size:13px;color:#222}
-      h1{font-size:18px;margin-bottom:4px}h2{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
-      .sep{border-top:1px solid #ddd;margin:12px 0}.row{display:flex;justify-content:space-between;padding:4px 0}
-      .bold{font-weight:600}.small{font-size:11px;color:#888}table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid #f0f0f0}
-      @media print{body{padding:12px}}</style></head><body>
-      <h1>SIMPLE · Pedido #${String(pedido.id).slice(-4).toUpperCase()}</h1>
-      <h2>${formatFecha(pedido.created_at)}</h2>
-      <div class="sep"></div>
-      <p class="bold">${pedido.nombre}</p>
-      <p class="small">${pedido.telefono}</p>
-      <p class="small">${pedido.direccion}${pedido.piso ? ' — ' + pedido.piso : ''}</p>
-      ${pedido.comentarios ? '<p class="small" style="margin-top:6px;font-style:italic">' + pedido.comentarios + '</p>' : ''}
-      <div class="sep"></div>
-      <table>${items.map(i => '<tr><td>' + i.nombre + ' x' + i.cantidad + '</td><td style="text-align:right">' + (i.precio || '') + '</td></tr>').join('')}</table>
-      <div class="sep"></div>
-      <div class="row"><span class="bold">Total (${totalViandas} viandas)</span><span class="bold" style="font-size:16px">${formatPrecio(pedido.total)}</span></div>
-      <p class="small" style="margin-top:4px">${metodo.emoji} ${metodo.label} · ${(pagoEstadoColores[pedido.pago_estado] || pagoEstadoColores.pendiente).label}</p>
-      <p class="small">Estado: ${(estadoColores[pedido.estado] || estadoColores.pendiente).label}</p>
-      </body></html>`)
+    const pagoEst = (pagoEstadoColores[pedido.pago_estado] || pagoEstadoColores.pendiente).label
+    const nroPedido = '#' + String(pedido.id).slice(-4).toUpperCase()
+    const fecha = formatFecha(pedido.created_at)
+
+    const w = window.open('', '_blank')
+    w.document.write(`<!DOCTYPE html><html><head><title>Pedido ${nroPedido} - SIMPLE</title>
+<style>
+  @page { size: A4 portrait; margin: 20mm 18mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 13px; line-height: 1.5; }
+
+  .header { text-align: center; padding-bottom: 20px; border-bottom: 2px solid #0E0E0C; margin-bottom: 20px; }
+  .logo { font-family: Georgia, 'Times New Roman', serif; font-size: 28px; letter-spacing: 6px; color: #0E0E0C; margin-bottom: 4px; }
+  .logo-sub { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #B89A5E; }
+  .fecha { font-size: 12px; color: #666; margin-top: 12px; }
+  .nro { font-family: Georgia, serif; font-size: 20px; color: #0E0E0C; margin-top: 4px; }
+
+  .section { padding: 18px 0; border-bottom: 1px solid #ddd; }
+  .section-title { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #B89A5E; margin-bottom: 10px; }
+
+  .cliente-nombre { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .cliente-dato { font-size: 12px; color: #555; margin-bottom: 2px; }
+  .comentario { font-size: 12px; color: #888; font-style: italic; margin-top: 8px; padding: 8px 12px; background: #f9f9f9; border-left: 3px solid #B89A5E; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #999; font-weight: 400; text-align: left; padding: 6px 0; border-bottom: 1px solid #ddd; }
+  th:nth-child(2) { text-align: center; }
+  th:nth-child(3), th:nth-child(4) { text-align: right; }
+  td { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  td:nth-child(2) { text-align: center; color: #666; }
+  td:nth-child(3) { text-align: right; color: #666; }
+  td:nth-child(4) { text-align: right; font-weight: 500; }
+
+  .totales { padding: 20px 0; border-bottom: 1px solid #ddd; }
+  .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .total-label { font-size: 12px; color: #888; }
+  .total-value { font-size: 12px; color: #1a1a1a; }
+  .total-final { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #0E0E0C; }
+  .total-final-label { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
+  .total-final-value { font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
+
+  .footer { padding: 18px 0; }
+  .footer-row { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 6px; }
+  .footer-label { color: #999; }
+
+  .print-actions { text-align: center; padding: 20px; border-top: 1px solid #eee; margin-top: 24px; }
+  .print-actions button { padding: 10px 24px; font-size: 12px; cursor: pointer; border: none; margin: 0 6px; font-family: inherit; }
+  .btn-print { background: #0E0E0C; color: #F7F3EC; letter-spacing: 2px; text-transform: uppercase; }
+  .btn-pdf { background: #fff; color: #0E0E0C; border: 1px solid #0E0E0C !important; letter-spacing: 2px; text-transform: uppercase; }
+
+  @media print {
+    .print-actions { display: none !important; }
+  }
+</style></head><body>
+
+<div class="header">
+  <div class="logo">SIMPLE</div>
+  <div class="logo-sub">Viandas caseras</div>
+  <div class="fecha">${fecha}</div>
+  <div class="nro">Pedido ${nroPedido}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Datos del cliente</div>
+  <div class="cliente-nombre">${pedido.nombre || ''}</div>
+  <div class="cliente-dato">📱 ${pedido.telefono || ''}</div>
+  ${pedido.comentarios ? '<div class="comentario">💬 ' + pedido.comentarios + '</div>' : ''}
+</div>
+
+<div class="section">
+  <div class="section-title">Detalle del pedido</div>
+  <table>
+    <thead><tr><th>Vianda</th><th>Cant.</th><th>P. Unit.</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      ${items.map(i => {
+        const precioNum = i?.precioNum || 0
+        const cant = i?.cantidad || 0
+        const sub = precioNum * cant
+        return '<tr><td>' + (i?.nombre || '') + '</td><td>' + cant + '</td><td>' + formatPrecio(precioNum) + '</td><td>' + formatPrecio(sub) + '</td></tr>'
+      }).join('')}
+    </tbody>
+  </table>
+</div>
+
+<div class="totales">
+  <div class="total-row"><span class="total-label">Total de viandas</span><span class="total-value">${totalViandas} unidades</span></div>
+  <div class="total-row"><span class="total-label">Método de pago</span><span class="total-value">${metodo.emoji} ${metodo.label}</span></div>
+  <div class="total-row"><span class="total-label">Estado del pago</span><span class="total-value">${pagoEst}</span></div>
+  <div class="total-final"><span class="total-final-label">Total</span><span class="total-final-value">${formatPrecio(pedido.total)}</span></div>
+</div>
+
+<div class="footer">
+  <div class="section-title">Dirección de entrega</div>
+  <div style="font-size:13px;margin-top:6px;">📍 ${pedido.direccion || ''}${pedido.piso ? ' — ' + pedido.piso : ''}</div>
+</div>
+
+<div class="print-actions">
+  <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
+  <button class="btn-pdf" onclick="window.print()">📄 Descargar PDF</button>
+</div>
+
+</body></html>`)
     w.document.close()
-    setTimeout(() => { w.print() }, 300)
   }
 
   const imprimirDesglose = () => {
