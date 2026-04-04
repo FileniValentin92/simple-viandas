@@ -28,16 +28,17 @@ const nivelesInfo = [
 export default function PerfilPage() {
   const router = useRouter()
   const { agregarItem, setAbierto, canjeActivo, quitarCanje } = useCart()
-  const { user, perfil, cargando: cargandoAuth } = useAuth()
+  const { user, perfil, cargando: cargandoAuth, cargarPerfil } = useAuth()
 
   const [pedidos, setPedidos] = useState([])
   const [cargandoPedidos, setCargandoPedidos] = useState(false)
   const [repetidoId, setRepetidoId] = useState(null)
   const [puntosLocales, setPuntosLocales] = useState(null)
+  const [historialAbierto, setHistorialAbierto] = useState(false)
 
   // Modal de canje
-  const [modalCanje, setModalCanje] = useState(null) // { viandas: N, puntos: P }
-  const [seleccion, setSeleccion] = useState({}) // { nombrePlato: cantidad }
+  const [modalCanje, setModalCanje] = useState(null)
+  const [seleccion, setSeleccion] = useState({})
 
   useEffect(() => {
     if (!cargandoAuth && !user) router.push('/login')
@@ -60,10 +61,34 @@ export default function PerfilPage() {
     if (perfil) setPuntosLocales(perfil.puntos || 0)
   }, [perfil])
 
+  // Siempre traer puntos frescos de la DB al montar
+  useEffect(() => {
+    if (!user?.id) return
+    const refrescarPuntos = async () => {
+      const { data } = await supabase.from('perfiles').select('puntos').eq('id', user.id).single()
+      if (data) setPuntosLocales(data.puntos || 0)
+    }
+    refrescarPuntos()
+    cargarPerfil(user.id) // También refrescar el contexto
+  }, [user])
+
   const puntosAcumulados = puntosLocales !== null ? puntosLocales : (perfil?.puntos || 0)
 
   const cantidadPedidos = pedidos.length
   const nivel = cantidadPedidos >= 20 ? 'VIP' : cantidadPedidos >= 10 ? 'Frecuente' : 'Básico'
+
+  // Derivar historial de puntos desde pedidos
+  const historialPuntos = pedidos.flatMap(p => {
+    const entries = []
+    if (p.puntos > 0) {
+      const viandas = (p.items || []).reduce((a, i) => a + (i.cantidad || 0), 0)
+      entries.push({ tipo: 'ganado', puntos: p.puntos, desc: `Pedido #${String(p.id).slice(-4).toUpperCase()} · ${viandas} viandas`, fecha: p.created_at })
+    }
+    if (p.puntos_canjeados > 0) {
+      entries.push({ tipo: 'canjeado', puntos: -p.puntos_canjeados, desc: `Canje ${p.viandas_canjeadas || 1} vianda${(p.viandas_canjeadas || 1) > 1 ? 's' : ''}`, fecha: p.created_at })
+    }
+    return entries
+  }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
 
   const totalViandas = pedidos.reduce((acc, p) => acc + (p.items || []).reduce((a, i) => a + (i.cantidad || 0), 0), 0)
   const totalCanjeadas = pedidos.reduce((acc, p) => acc + (p.viandas_canjeadas || 0), 0)
@@ -224,6 +249,46 @@ export default function PerfilPage() {
                     </button>
                   ))}
                   {canjeHint && <p style={{ textAlign: 'center', fontSize: '10px', color: 'var(--gold)' }}>{canjeHint}</p>}
+                </div>
+              )}
+
+              {/* Botón historial de puntos */}
+              {pedidos.length > 0 && (
+                <button
+                  onClick={() => setHistorialAbierto(!historialAbierto)}
+                  style={{ width: '100%', marginTop: '14px', background: 'transparent', border: '1px solid var(--cream-deep)', padding: '10px', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', color: '#888', cursor: 'pointer', fontFamily: 'Jost, sans-serif', transition: 'all 0.2s' }}
+                >
+                  {historialAbierto ? 'OCULTAR HISTORIAL' : 'VER HISTORIAL DE PUNTOS'}
+                </button>
+              )}
+
+              {/* Historial expandible */}
+              {historialAbierto && (
+                <div style={{ marginTop: '14px', borderTop: '1px solid var(--cream-deep)', paddingTop: '14px' }}>
+                  <div style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {historialPuntos.length === 0 ? (
+                      <p style={{ fontSize: '12px', color: '#999', textAlign: 'center', padding: '16px 0' }}>Sin movimientos de puntos</p>
+                    ) : (
+                      historialPuntos.map((h, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < historialPuntos.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                          <div>
+                            <p style={{ fontSize: '12px', color: 'var(--black)', fontWeight: '300' }}>{h.desc}</p>
+                            <p style={{ fontSize: '10px', color: '#aaa' }}>{formatearFecha(h.fecha)}</p>
+                          </div>
+                          <span style={{
+                            fontFamily: 'Playfair Display, serif', fontSize: '15px', fontWeight: '400',
+                            color: h.tipo === 'ganado' ? 'var(--olive)' : '#e74c3c',
+                          }}>
+                            {h.tipo === 'ganado' ? '+' : ''}{h.puntos}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--cream-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#888', fontWeight: '300' }}>Total disponible</span>
+                    <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '18px', color: 'var(--black)' }}>{puntosAcumulados.toLocaleString('es-AR')} pts</span>
+                  </div>
                 </div>
               )}
             </div>

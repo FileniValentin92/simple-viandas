@@ -15,7 +15,7 @@ export default function ConfirmarPage() {
     items, totalPrecio, totalPuntos, subtotalBruto, totalDescuentoCanje,
     vaciarCarrito, calcularDescuentos, canjeItems, canjeActivo, puntosEnCanje, quitarCanje,
   } = useCart()
-  const { user, perfil } = useAuth()
+  const { user, perfil, cargarPerfil } = useAuth()
 
   const [form, setForm] = useState({
     nombre: '', telefono: '', calle: '', altura: '',
@@ -152,6 +152,7 @@ export default function ConfirmarPage() {
         await supabase.from('perfiles').update({ puntos: nuevosPuntos }).eq('id', user.id)
       }
       if (user?.email) await enviarEmailConfirmacion(user.email)
+      if (user?.id) cargarPerfil(user.id) // Refresh perfil context
       vaciarCarrito(); setExito(true)
     } catch (err) {
       console.error(err); setError('Hubo un problema al confirmar el pedido. Intentá de nuevo.'); setRedirigiendo(false)
