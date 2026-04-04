@@ -20,9 +20,9 @@ const estadoColor = {
 }
 
 const nivelesInfo = [
-  { nombre: 'Básico', rango: '0–9 pedidos', opciones: [{ pts: 200, viandas: 1 }] },
-  { nombre: 'Frecuente', rango: '10–19 pedidos', opciones: [{ pts: 200, viandas: 1 }, { pts: 300, viandas: 2 }] },
-  { nombre: 'VIP', rango: '20+ pedidos', opciones: [{ pts: 200, viandas: 1 }, { pts: 300, viandas: 2 }, { pts: 400, viandas: 3 }] },
+  { nombre: 'Básico', sufijo: 'Simple', rango: '0–9 pedidos', maxViandas: 1 },
+  { nombre: 'Frecuente', sufijo: 'Simple', rango: '10–19 pedidos', maxViandas: 2 },
+  { nombre: 'VIP', sufijo: 'Simple', rango: '20+ pedidos', maxViandas: 3 },
 ]
 
 export default function PerfilPage() {
@@ -37,21 +37,16 @@ export default function PerfilPage() {
   const [canjeExito, setCanjeExito] = useState(null)
   const [canjeando, setCanjeando] = useState(false)
 
-  // Redirigir si no hay sesión
   useEffect(() => {
-    if (!cargandoAuth && !user) {
-      router.push('/login')
-    }
+    if (!cargandoAuth && !user) router.push('/login')
   }, [user, cargandoAuth, router])
 
-  // Cargar pedidos reales desde Supabase
   useEffect(() => {
     if (!user || !perfil) return
     const cargarPedidos = async () => {
       setCargandoPedidos(true)
       const { data } = await supabase
-        .from('pedidos')
-        .select('*')
+        .from('pedidos').select('*')
         .or(`user_id.eq.${user.id},telefono.eq.${perfil.telefono || 'NULO'}`)
         .order('created_at', { ascending: false })
       setPedidos(data || [])
@@ -60,41 +55,60 @@ export default function PerfilPage() {
     cargarPedidos()
   }, [user, perfil])
 
-  // Sincronizar puntos locales con perfil
   useEffect(() => {
     if (perfil) setPuntosLocales(perfil.puntos || 0)
   }, [perfil])
 
   const puntosAcumulados = puntosLocales !== null ? puntosLocales : (perfil?.puntos || 0)
 
-  // Nivel basado en cantidad de pedidos
+  // Nivel basado en pedidos
   const cantidadPedidos = pedidos.length
   const nivel = cantidadPedidos >= 20 ? 'VIP' : cantidadPedidos >= 10 ? 'Frecuente' : 'Básico'
-  const nivelColor = nivel === 'VIP' ? 'var(--gold)' : nivel === 'Frecuente' ? 'var(--olive)' : '#999'
+  const maxViandas = nivel === 'VIP' ? 3 : nivel === 'Frecuente' ? 2 : 1
 
-  // Barra de progreso hacia próximo canje
-  let barraObjetivo, barraLabel
-  if (puntosAcumulados < 200) {
-    barraObjetivo = 200
-    barraLabel = '1 vianda gratis'
-  } else if ((nivel === 'Frecuente' || nivel === 'VIP') && puntosAcumulados < 300) {
-    barraObjetivo = 300
-    barraLabel = '2 viandas gratis'
-  } else if (nivel === 'VIP' && puntosAcumulados < 400) {
-    barraObjetivo = 400
-    barraLabel = '3 viandas gratis'
-  } else {
-    barraObjetivo = null
-    barraLabel = null
-  }
-  const progresoPorc = barraObjetivo ? Math.min(100, (puntosAcumulados / barraObjetivo) * 100) : 100
-  const ptsRestantes = barraObjetivo ? barraObjetivo - puntosAcumulados : 0
+  // Estadísticas del historial
+  const totalViandas = pedidos.reduce((acc, p) => {
+    const items = p.items || []
+    return acc + items.reduce((a, i) => a + (i.cantidad || 0), 0)
+  }, 0)
+  const totalCanjeadas = pedidos.reduce((acc, p) => acc + (p.viandas_canjeadas || 0), 0)
 
-  // Opciones de canje
+  // Canje disponible
   const opcionesCanje = []
   if (puntosAcumulados >= 200) opcionesCanje.push({ viandas: 1, puntos: 200 })
   if (puntosAcumulados >= 300 && (nivel === 'Frecuente' || nivel === 'VIP')) opcionesCanje.push({ viandas: 2, puntos: 300 })
   if (puntosAcumulados >= 400 && nivel === 'VIP') opcionesCanje.push({ viandas: 3, puntos: 400 })
+
+  const mejorCanje = opcionesCanje.length > 0 ? opcionesCanje[opcionesCanje.length - 1] : null
+
+  // Hint para el siguiente canje
+  let canjeHint = ''
+  if (mejorCanje) {
+    if (nivel === 'Frecuente' && puntosAcumulados < 300) {
+      canjeHint = `o esperá ${300 - puntosAcumulados} pts más para canjear 2`
+    } else if (nivel === 'VIP' && puntosAcumulados < 400) {
+      const siguiente = puntosAcumulados < 300 ? { pts: 300, v: 2 } : { pts: 400, v: 3 }
+      canjeHint = `o esperá ${siguiente.pts - puntosAcumulados} pts más para canjear ${siguiente.v}`
+    }
+  }
+
+  // Barra de progreso
+  let barraObjetivo, barraLabel, barraViandas
+  if (puntosAcumulados < 200) {
+    barraObjetivo = 200; barraLabel = '1 vianda disponible'; barraViandas = 0
+  } else if ((nivel === 'Frecuente' || nivel === 'VIP') && puntosAcumulados < 300) {
+    barraObjetivo = 300; barraLabel = '1 vianda disponible'; barraViandas = 1
+  } else if (nivel === 'VIP' && puntosAcumulados < 400) {
+    barraObjetivo = 400; barraLabel = '2 viandas disponibles'; barraViandas = 2
+  } else if (puntosAcumulados >= 200) {
+    barraObjetivo = null; barraLabel = `${mejorCanje?.viandas || 1} vianda${(mejorCanje?.viandas || 1) > 1 ? 's' : ''} disponible${(mejorCanje?.viandas || 1) > 1 ? 's' : ''}`; barraViandas = mejorCanje?.viandas || 1
+  } else {
+    barraObjetivo = 200; barraLabel = '0 viandas disponibles'; barraViandas = 0
+  }
+  const progresoPorc = barraObjetivo ? Math.min(100, (puntosAcumulados / barraObjetivo) * 100) : 100
+
+  // Pedidos para siguiente nivel
+  const pedidosParaSiguiente = nivel === 'Básico' ? 10 - cantidadPedidos : nivel === 'Frecuente' ? 20 - cantidadPedidos : 0
 
   const handleCanje = async (opcion) => {
     if (canjeando) return
@@ -102,10 +116,7 @@ export default function PerfilPage() {
     try {
       const { data: perfilData } = await supabase.from('perfiles').select('puntos').eq('id', user.id).single()
       const puntosActuales = perfilData?.puntos ?? 0
-      if (puntosActuales < opcion.puntos) {
-        setCanjeando(false)
-        return
-      }
+      if (puntosActuales < opcion.puntos) { setCanjeando(false); return }
       await supabase.from('perfiles').update({ puntos: puntosActuales - opcion.puntos }).eq('id', user.id)
       setPuntosLocales(puntosActuales - opcion.puntos)
       setCanjeExito(opcion)
@@ -130,8 +141,7 @@ export default function PerfilPage() {
 
   const formatearFecha = (dateStr) => {
     if (!dateStr) return ''
-    const d = new Date(dateStr)
-    return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   const formatPrecio = (n) => '$' + n.toLocaleString('es-AR')
@@ -157,15 +167,12 @@ export default function PerfilPage() {
 
       {/* Header */}
       <section style={{ background: 'var(--black)', padding: '48px 64px' }} className="perfil-header">
-        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '10px' }}>
-          Tu cuenta
-        </p>
+        <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '10px' }}>Tu cuenta</p>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '40px', color: 'var(--cream)', fontWeight: '400' }}>
           Hola, {nombreMostrar.split(' ')[0]}
         </h1>
         <p style={{ fontSize: '12px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', marginTop: '8px' }}>
-          {user.email}
-          {perfil?.telefono && ` · ${perfil.telefono}`}
+          {user.email}{perfil?.telefono && ` · ${perfil.telefono}`}
         </p>
       </section>
 
@@ -174,111 +181,125 @@ export default function PerfilPage() {
         <div className="perfil-grid">
 
           {/* Columna izquierda — Puntos */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Card puntos */}
-            <div style={{ background: 'var(--black)', padding: '36px' }}>
-              <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '8px' }}>
-                Tus puntos SIMPLE
-              </p>
-              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '72px', color: 'var(--cream)', fontWeight: '400', lineHeight: '1', marginBottom: '8px' }}>
+            <div style={{ background: 'var(--black)', padding: '28px', borderRadius: '4px' }}>
+              <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'rgba(247,243,236,0.4)', marginBottom: '16px' }}>TUS PUNTOS SIMPLE</p>
+              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '52px', color: 'var(--cream)', fontWeight: '400', lineHeight: '1', marginBottom: '4px' }}>
                 {puntosAcumulados.toLocaleString('es-AR')}
               </p>
-              <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', letterSpacing: '1px' }}>
-                puntos acumulados
-              </p>
-              <div style={{ marginTop: '24px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(247,243,236,0.08)', padding: '8px 16px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: nivelColor }} />
-                <span style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--cream)', fontWeight: '300' }}>
-                  Nivel {nivel} · {cantidadPedidos} pedido{cantidadPedidos !== 1 ? 's' : ''}
-                </span>
+              <p style={{ fontSize: '11px', color: 'rgba(247,243,236,0.4)', fontWeight: '300', marginBottom: '20px' }}>puntos acumulados</p>
+              <div style={{ background: 'var(--gold)', color: 'var(--black)', padding: '6px 14px', fontSize: '9px', letterSpacing: '2px', display: 'inline-block', fontWeight: '500' }}>
+                ★ {nivel.toUpperCase()} · SIMPLE
               </div>
             </div>
 
-            {/* Barra de progreso */}
-            <div style={{ border: '1px solid var(--cream-deep)', padding: '28px', background: 'var(--cream)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)' }}>
-                  {barraObjetivo ? 'Próximo canje' : 'Canje disponible'}
-                </p>
-                {barraObjetivo ? (
-                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>{ptsRestantes} pts restantes</p>
-                ) : (
-                  <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '400' }}>Listo para canjear</p>
-                )}
-              </div>
-              <div style={{ height: '6px', background: 'var(--cream-deep)', marginBottom: '12px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progresoPorc}%`, background: 'var(--olive)', transition: 'width 0.6s ease' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>{puntosAcumulados} / {barraObjetivo || (nivel === 'VIP' ? 400 : nivel === 'Frecuente' ? 300 : 200)} pts</p>
-                <p style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>= {barraLabel || (nivel === 'VIP' ? '3 viandas gratis' : nivel === 'Frecuente' ? '2 viandas gratis' : '1 vianda gratis')} 🎁</p>
-              </div>
-            </div>
+            {/* Canje disponible */}
+            <div style={{ background: 'var(--white)', border: '1px solid rgba(0,0,0,0.08)', padding: '20px', borderRadius: '4px' }}>
+              <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'var(--gold)', marginBottom: '14px' }}>CANJE DISPONIBLE</p>
 
-            {/* Opciones de canje */}
-            {opcionesCanje.length > 0 && (
-              <div style={{ border: '1px solid var(--olive)', padding: '24px 28px', background: 'rgba(74,85,48,0.05)' }}>
-                <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300', marginBottom: '16px' }}>Canjes disponibles</p>
+              {canjeExito && (
+                <div style={{ marginBottom: '14px', padding: '12px', background: 'rgba(74,85,48,0.08)', border: '1px solid var(--olive)' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--olive)', fontWeight: '400', lineHeight: '1.5' }}>
+                    ✅ Canjeaste {canjeExito.viandas} vianda{canjeExito.viandas > 1 ? 's' : ''} gratis. Usá el descuento en tu próximo pedido.
+                  </p>
+                </div>
+              )}
 
-                {canjeExito && (
-                  <div style={{ marginBottom: '16px', padding: '14px', background: 'rgba(74,85,48,0.1)', border: '1px solid var(--olive)' }}>
-                    <p style={{ fontSize: '13px', color: 'var(--olive)', fontWeight: '400', lineHeight: '1.5' }}>
-                      ✅ Canjeaste {canjeExito.viandas} vianda{canjeExito.viandas > 1 ? 's' : ''} gratis. Usá el descuento en tu próximo pedido desde la página de confirmar.
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {opcionesCanje.map((opcion) => (
-                    <button
-                      key={opcion.puntos}
-                      onClick={() => handleCanje(opcion)}
-                      disabled={canjeando}
-                      style={{
-                        border: '1px solid var(--olive)',
-                        background: 'var(--olive)',
-                        color: 'var(--cream)',
-                        padding: '14px 20px',
-                        cursor: canjeando ? 'not-allowed' : 'pointer',
-                        fontFamily: 'Jost, sans-serif',
-                        fontSize: '12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        transition: 'all 0.2s ease',
-                        opacity: canjeando ? 0.6 : 1,
-                      }}
-                    >
-                      <span>Canjear {opcion.viandas} vianda{opcion.viandas > 1 ? 's' : ''} · {opcion.puntos} pts</span>
-                      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '14px' }}>
-                        = {formatPrecio(opcion.viandas * PRECIO_MIN_VIANDA)}
-                      </span>
-                    </button>
-                  ))}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888', marginBottom: '6px' }}>
+                  <span>{puntosAcumulados} / {barraObjetivo || (mejorCanje?.puntos || 200)} pts</span>
+                  <span>{barraLabel}</span>
+                </div>
+                <div style={{ height: '6px', background: 'var(--cream-mid)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progresoPorc}%`, height: '100%', background: 'var(--gold)', borderRadius: '3px', transition: 'width 0.6s ease' }} />
                 </div>
               </div>
-            )}
+
+              {puntosAcumulados < 200 && (
+                <p style={{ fontSize: '11px', color: '#888', marginBottom: '16px' }}>
+                  Te faltan {200 - puntosAcumulados} pts para tu primera vianda gratis.
+                </p>
+              )}
+
+              {mejorCanje && !canjeExito && (
+                <>
+                  <p style={{ fontSize: '11px', color: '#888', marginBottom: '16px' }}>
+                    Podés canjear {mejorCanje.viandas} vianda{mejorCanje.viandas > 1 ? 's' : ''} ahora{canjeHint ? '.' : '.'}
+                  </p>
+                  <button
+                    onClick={() => handleCanje(mejorCanje)}
+                    disabled={canjeando}
+                    style={{ width: '100%', background: 'var(--black)', color: 'var(--cream)', border: 'none', padding: '12px', fontSize: '10px', letterSpacing: '2px', cursor: canjeando ? 'not-allowed' : 'pointer', fontFamily: 'Jost, sans-serif', opacity: canjeando ? 0.6 : 1 }}
+                  >
+                    CANJEAR {mejorCanje.viandas} VIANDA{mejorCanje.viandas > 1 ? 'S' : ''} · {mejorCanje.puntos} PTS
+                  </button>
+                  {canjeHint && (
+                    <p style={{ textAlign: 'center', marginTop: '8px', fontSize: '10px', color: 'var(--gold)' }}>{canjeHint}</p>
+                  )}
+                </>
+              )}
+
+              {!mejorCanje && puntosAcumulados < 200 && (
+                <div style={{ height: '4px' }} />
+              )}
+            </div>
 
             {/* Niveles del programa */}
-            <div style={{ border: '1px solid var(--cream-deep)', padding: '28px' }}>
-              <p style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '300', color: 'var(--black)', marginBottom: '20px' }}>Niveles del programa</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: 'var(--white)', border: '1px solid rgba(0,0,0,0.08)', padding: '20px', borderRadius: '4px' }}>
+              <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'var(--gold)', marginBottom: '14px' }}>NIVELES DEL PROGRAMA</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {nivelesInfo.map((n) => {
-                  const activo = nivel === n.nombre
+                  const esActual = nivel === n.nombre
+                  const esPasado = (n.nombre === 'Básico' && nivel !== 'Básico') || (n.nombre === 'Frecuente' && nivel === 'VIP')
+                  const esFuturo = !esActual && !esPasado
                   return (
-                    <div key={n.nombre} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: activo ? 1 : 0.4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: n.nombre === 'VIP' ? 'var(--gold)' : n.nombre === 'Frecuente' ? 'var(--olive)' : '#999', flexShrink: 0 }} />
-                        <span style={{ fontSize: '12px', fontWeight: activo ? '400' : '300', color: 'var(--black)' }}>{n.nombre}</span>
-                        {activo && <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--olive)', fontWeight: '300' }}>← actual</span>}
+                    <div key={n.nombre} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 12px', borderRadius: '2px',
+                      background: esActual ? 'var(--black)' : 'var(--cream)',
+                      opacity: esFuturo ? 0.5 : 1,
+                    }}>
+                      <div>
+                        <p style={{ fontSize: '12px', fontWeight: '500', color: esActual ? 'var(--gold)' : 'var(--black)' }}>
+                          {esActual ? '★ ' : ''}{n.nombre} · {n.sufijo}
+                        </p>
+                        <p style={{ fontSize: '11px', color: esActual ? 'rgba(247,243,236,0.5)' : '#888' }}>
+                          {n.rango} · hasta {n.maxViandas} vianda{n.maxViandas > 1 ? 's' : ''}
+                        </p>
                       </div>
-                      <span style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>
-                        {n.rango}
-                      </span>
+                      {esActual && (
+                        <span style={{ fontSize: '9px', color: 'var(--gold)', border: '1px solid rgba(184,154,94,0.3)', padding: '3px 8px', letterSpacing: '1px' }}>ACTUAL</span>
+                      )}
+                      {esFuturo && pedidosParaSiguiente > 0 && n.nombre === (nivel === 'Básico' ? 'Frecuente' : 'VIP') && (
+                        <span style={{ fontSize: '10px', color: '#888' }}>{pedidosParaSiguiente} pedidos más</span>
+                      )}
+                      {esPasado && (
+                        <span style={{ fontSize: '10px', color: '#888' }}>10 pts/vianda</span>
+                      )}
                     </div>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* Tu historial (stats) */}
+            <div style={{ background: 'var(--white)', border: '1px solid rgba(0,0,0,0.08)', padding: '20px', borderRadius: '4px' }}>
+              <p style={{ fontSize: '9px', letterSpacing: '3px', color: 'var(--gold)', marginBottom: '14px' }}>TU HISTORIAL</p>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)' }}>{cantidadPedidos}</p>
+                  <p style={{ fontSize: '11px', color: '#888' }}>pedidos</p>
+                </div>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--black)' }}>{totalViandas}</p>
+                  <p style={{ fontSize: '11px', color: '#888' }}>viandas</p>
+                </div>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: 'var(--gold)' }}>{totalCanjeadas}</p>
+                  <p style={{ fontSize: '11px', color: '#888' }}>canjeadas</p>
+                </div>
               </div>
             </div>
           </div>
@@ -296,74 +317,46 @@ export default function PerfilPage() {
             ) : pedidos.length === 0 ? (
               <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--cream-deep)', background: 'var(--cream)' }}>
                 <p style={{ fontSize: '32px', marginBottom: '16px' }}>🛒</p>
-                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)', fontWeight: '400', marginBottom: '8px' }}>
-                  Todavía no hiciste pedidos
-                </p>
-                <p style={{ fontSize: '12px', color: '#999', fontWeight: '300', marginBottom: '24px' }}>
-                  Tus pedidos van a aparecer acá
-                </p>
-                <a href="/menu" style={{ display: 'inline-block', background: 'var(--black)', color: 'var(--cream)', padding: '12px 28px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>
-                  Ver menú
-                </a>
+                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)', fontWeight: '400', marginBottom: '8px' }}>Todavía no hiciste pedidos</p>
+                <p style={{ fontSize: '12px', color: '#999', fontWeight: '300', marginBottom: '24px' }}>Tus pedidos van a aparecer acá</p>
+                <a href="/menu" style={{ display: 'inline-block', background: 'var(--black)', color: 'var(--cream)', padding: '12px 28px', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', textDecoration: 'none' }}>Ver menú</a>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {pedidos.map((pedido) => {
                   const items = pedido.items || []
                   const colorEstado = estadoColor[pedido.estado] || estadoColor['pendiente']
+                  const resumenItems = items.map(i => `${catalogoPlatos[i.nombre]?.emoji || ''} ${i.nombre} x${i.cantidad}`).join(', ')
                   return (
-                    <div key={pedido.id} style={{ border: '1px solid var(--cream-deep)', padding: '24px', background: 'var(--cream)' }}>
-
-                      {/* Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--black)', fontWeight: '400' }}>
-                            #{String(pedido.id).slice(-4).toUpperCase()}
+                    <div key={pedido.id} style={{ background: 'var(--white)', border: '1px solid rgba(0,0,0,0.08)', padding: '16px 20px', borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--black)' }}>
+                            Pedido #{String(pedido.id).slice(-4).toUpperCase()} · {formatearFecha(pedido.created_at)}
                           </span>
-                          <span style={{ fontSize: '11px', color: '#999', fontWeight: '300' }}>{formatearFecha(pedido.created_at)}</span>
+                          <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: colorEstado.color, background: colorEstado.bg, padding: '3px 10px', fontWeight: '300' }}>
+                            {pedido.estado}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: colorEstado.color, background: colorEstado.bg, padding: '4px 12px', fontWeight: '300' }}>
-                          {pedido.estado}
-                        </span>
                       </div>
-
-                      {/* Items */}
-                      <div style={{ marginBottom: '16px' }}>
-                        {items.map((item, i) => {
-                          const datos = catalogoPlatos[item.nombre]
-                          const precioUnitario = datos?.precioNum || 0
-                          const precioTotal = precioUnitario * item.cantidad
-                          return (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '12px' }}>
-                              <span style={{ fontSize: '13px', color: '#666', fontWeight: '300' }}>
-                                {datos?.emoji} {item.nombre} x{item.cantidad}
-                              </span>
-                              <span style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '300', whiteSpace: 'nowrap' }}>
-                                ${precioTotal.toLocaleString('es-AR')}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {/* Footer */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--cream-deep)', paddingTop: '14px', flexWrap: 'wrap', gap: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--black)' }}>
+                      <p style={{ fontSize: '11px', color: '#888', fontWeight: '300', marginBottom: '10px', lineHeight: '1.5' }}>
+                        {items.reduce((a, i) => a + i.cantidad, 0)} viandas · {resumenItems.length > 80 ? resumenItems.slice(0, 80) + '...' : resumenItems}
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: 'var(--black)' }}>
                             ${pedido.total?.toLocaleString('es-AR')}
                           </span>
-                          <span style={{ fontSize: '11px', color: 'var(--olive)', fontWeight: '300' }}>
-                            +{pedido.puntos} pts
-                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: '400' }}>+{pedido.puntos} pts</span>
                           {pedido.pago_metodo && (
                             <span style={{ fontSize: '10px', color: '#999', fontWeight: '300' }}>
-                              {pedido.pago_metodo === 'efectivo' ? '💵 Efectivo' : '💳 MercadoPago'}
+                              {pedido.pago_metodo === 'efectivo' ? '💵' : '💳'}
                             </span>
                           )}
                         </div>
                         <button
                           onClick={() => repetirPedido(pedido)}
-                          style={{ background: repetidoId === pedido.id ? 'var(--olive)' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '10px 20px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer', transition: 'background 0.2s ease', whiteSpace: 'nowrap' }}>
+                          style={{ background: repetidoId === pedido.id ? 'var(--olive)' : 'var(--black)', color: 'var(--cream)', border: 'none', padding: '8px 16px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', fontWeight: '300', cursor: 'pointer', transition: 'background 0.2s ease', whiteSpace: 'nowrap' }}>
                           {repetidoId === pedido.id ? '✓ Agregado' : 'Repetir pedido'}
                         </button>
                       </div>
@@ -379,39 +372,25 @@ export default function PerfilPage() {
       {/* Cómo funciona tu programa de puntos */}
       <section style={{ background: 'var(--black)', padding: 'clamp(48px, 6vw, 80px) clamp(20px, 5vw, 80px)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <p style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px', textAlign: 'center' }}>
-            Programa de fidelidad
-          </p>
+          <p style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '16px', textAlign: 'center' }}>Programa de fidelidad</p>
           <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(28px, 4vw, 40px)', color: 'var(--cream)', fontWeight: '400', marginBottom: '48px', textAlign: 'center' }}>
             Cómo funciona tu programa de puntos
           </h2>
 
-          {/* Cards info */}
           <div className="perfil-puntos-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }}>
             <div style={{ border: '1px solid rgba(247,243,236,0.12)', padding: '32px 28px' }}>
               <p style={{ fontSize: '32px', marginBottom: '16px' }}>⭐</p>
-              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>
-                +10 pts por cada vianda comprada
-              </p>
-              <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.6' }}>
-                Sumás puntos en cada pedido. Los puntos no usados quedan en tu cuenta.
-              </p>
+              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>+10 pts por cada vianda comprada</p>
+              <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.6' }}>Sumás puntos en cada pedido. Los puntos no usados quedan en tu cuenta.</p>
             </div>
             <div style={{ border: '1px solid rgba(247,243,236,0.12)', padding: '32px 28px' }}>
               <p style={{ fontSize: '32px', marginBottom: '16px' }}>🎁</p>
-              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>
-                200 pts = 1 vianda gratis
-              </p>
-              <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.6' }}>
-                Siempre 200 pts por vianda. El valor equivale al precio más bajo del menú ({formatPrecio(PRECIO_MIN_VIANDA)}). Si elegís una más cara, pagás la diferencia.
-              </p>
+              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', color: 'var(--cream)', fontWeight: '400', marginBottom: '12px' }}>200 pts = 1 vianda gratis</p>
+              <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.5)', fontWeight: '300', lineHeight: '1.6' }}>El valor equivale al precio más bajo del menú ({formatPrecio(PRECIO_MIN_VIANDA)}). Si elegís una más cara, pagás la diferencia.</p>
             </div>
           </div>
 
-          {/* Niveles detallados */}
-          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '24px', textAlign: 'center' }}>
-            Cuántas viandas podés canjear según tu nivel
-          </p>
+          <p style={{ fontSize: '9px', letterSpacing: '4px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '300', marginBottom: '24px', textAlign: 'center' }}>Cuántas viandas podés canjear según tu nivel</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {nivelesInfo.map((n) => {
@@ -419,27 +398,16 @@ export default function PerfilPage() {
               return (
                 <div key={n.nombre} style={{
                   border: esActual ? '1px solid var(--gold)' : '1px solid rgba(247,243,236,0.08)',
-                  padding: '24px 28px',
-                  background: esActual ? 'rgba(184,154,94,0.08)' : 'transparent',
-                  position: 'relative',
+                  padding: '24px 28px', background: esActual ? 'rgba(184,154,94,0.08)' : 'transparent', position: 'relative',
                 }}>
-                  {esActual && (
-                    <span style={{ position: 'absolute', top: '12px', right: '16px', fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '400' }}>
-                      Tu nivel actual
-                    </span>
-                  )}
+                  {esActual && <span style={{ position: 'absolute', top: '12px', right: '16px', fontSize: '8px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: '400' }}>Tu nivel actual</span>}
                   <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '18px', color: esActual ? 'var(--gold)' : 'var(--cream)', fontWeight: '400', marginBottom: '4px' }}>
                     {n.nombre} <span style={{ fontSize: '12px', color: 'rgba(247,243,236,0.4)', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>({n.rango})</span>
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
-                    {n.opciones.map((op, i) => {
-                      const esUltima = i === n.opciones.length - 1 && n.opciones.length > 1
-                      return (
-                        <p key={op.pts} style={{ fontSize: '13px', color: 'rgba(247,243,236,0.6)', fontWeight: '300' }}>
-                          → {op.pts} pts = {op.viandas} vianda{op.viandas > 1 ? 's' : ''} gratis {esUltima && n.nombre === 'Frecuente' ? '✦' : ''}{esUltima && n.nombre === 'VIP' ? '✦✦' : ''}
-                        </p>
-                      )
-                    })}
+                    <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.6)', fontWeight: '300' }}>→ 200 pts = 1 vianda gratis</p>
+                    {n.maxViandas >= 2 && <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.6)', fontWeight: '300' }}>→ 300 pts = 2 viandas gratis ✦</p>}
+                    {n.maxViandas >= 3 && <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.6)', fontWeight: '300' }}>→ 400 pts = 3 viandas gratis ✦✦</p>}
                   </div>
                 </div>
               )
