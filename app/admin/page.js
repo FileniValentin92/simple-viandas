@@ -313,7 +313,7 @@ export default function AdminPage() {
     const w = window.open('', '_blank')
     w.document.write(`<!DOCTYPE html><html><head><title>Pedido ${nroPedido} - SIMPLE</title>
 <style>
-  @page { size: A4 portrait; margin: 20mm 18mm; }
+  @page { size: A4 portrait; margin: 30mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 13px; line-height: 1.5; }
 
@@ -404,8 +404,28 @@ export default function AdminPage() {
 
 <div class="print-actions">
   <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
-  <button class="btn-pdf" onclick="window.print()">📄 Descargar PDF</button>
+  <button class="btn-pdf" id="btn-pdf">📄 Descargar PDF</button>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
+<script>
+document.getElementById('btn-pdf').addEventListener('click', async function() {
+  this.textContent = 'Generando...';
+  var actions = document.querySelector('.print-actions');
+  actions.style.display = 'none';
+  try {
+    var canvas = await html2canvas(document.body, { scale: 2, useCORS: true });
+    var imgData = canvas.toDataURL('image/png');
+    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+    var pageW = 210 - 60;
+    var pageH = (canvas.height * pageW) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 30, 30, pageW, pageH);
+    pdf.save('pedido-${nroPedido.replace('#','')}.pdf');
+  } catch(e) { alert('Error generando PDF'); console.error(e); }
+  actions.style.display = '';
+  this.textContent = '📄 Descargar PDF';
+});
+<\/script>
 
 </body></html>`)
     w.document.close()
