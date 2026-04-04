@@ -9,7 +9,6 @@ export function CartProvider({ children }) {
   const [abierto, setAbierto] = useState(false)
   const [cargado, setCargado] = useState(false)
 
-  // Cargar carrito desde localStorage al iniciar
   useEffect(() => {
     try {
       const guardado = localStorage.getItem('carrito_simple')
@@ -18,7 +17,6 @@ export function CartProvider({ children }) {
     setCargado(true)
   }, [])
 
-  // Guardar carrito en localStorage cada vez que cambia
   useEffect(() => {
     if (!cargado) return
     try {
@@ -50,6 +48,11 @@ export function CartProvider({ children }) {
     setItems(prev => prev.filter(i => i.nombre !== nombre))
   }
 
+  // Quitar TODOS los items de canje del carrito
+  const quitarCanje = () => {
+    setItems(prev => prev.filter(i => !i.esCanje))
+  }
+
   const vaciarCarrito = () => {
     setItems([])
     try { localStorage.removeItem('carrito_simple') } catch (e) {}
@@ -57,16 +60,40 @@ export function CartProvider({ children }) {
 
   const totalItems = items.reduce((acc, i) => acc + i.cantidad, 0)
 
+  // Para canje items: solo sumar la diferencia (lo que el usuario paga)
   const totalPrecio = items.reduce((acc, i) => {
+    const precio = typeof i.precioNum === 'number' ? i.precioNum : parseInt(i.precio.replace(/\$|\./g, '').replace(',', ''))
+    if (i.esCanje) {
+      const diff = Math.max(0, precio - (i.canjeValor || 0))
+      return acc + diff * i.cantidad
+    }
+    return acc + precio * i.cantidad
+  }, 0)
+
+  // Subtotal sin descuento de canje (para mostrar en resumen)
+  const subtotalBruto = items.reduce((acc, i) => {
     const precio = typeof i.precioNum === 'number' ? i.precioNum : parseInt(i.precio.replace(/\$|\./g, '').replace(',', ''))
     return acc + precio * i.cantidad
   }, 0)
 
-  // 10 puntos por cada vianda (suelta o dentro de pack)
-  const totalPuntos = totalItems * 10
+  // Total del descuento por canje
+  const totalDescuentoCanje = items.reduce((acc, i) => {
+    if (!i.esCanje) return acc
+    const precio = typeof i.precioNum === 'number' ? i.precioNum : parseInt(i.precio.replace(/\$|\./g, '').replace(',', ''))
+    return acc + Math.min(precio, i.canjeValor || 0) * i.cantidad
+  }, 0)
+
+  // Canje items no ganan puntos
+  const totalPuntos = items.filter(i => !i.esCanje).reduce((acc, i) => acc + i.cantidad, 0) * 10
+
+  // Info de canje activo
+  const canjeItems = items.filter(i => i.esCanje)
+  const canjeActivo = canjeItems.length > 0
+  const puntosEnCanje = canjeItems.reduce((acc, i) => acc + (i.puntosUsados || 0) * i.cantidad, 0)
 
   const calcularDescuentos = (metodoPago) => {
-    const viandasSueltas = items.filter(i => !i.nombre.includes('(pack'))
+    // Excluir canje items del cálculo de descuentos
+    const viandasSueltas = items.filter(i => !i.nombre.includes('(pack') && !i.esCanje)
     const packs = items.filter(i => i.nombre.includes('(pack'))
 
     const cantViandasSueltas = viandasSueltas.reduce((acc, i) => acc + i.cantidad, 0)
@@ -86,7 +113,6 @@ export function CartProvider({ children }) {
     else if (cantViandasSueltas >= 5) porcentajeViandas = 5
 
     const porcentajePacks = packs.length > 0 ? 5 : 0
-
     const esEfectivo = metodoPago === 'efectivo'
 
     const descuentoViandas = esEfectivo ? Math.round(subtotalViandas * porcentajeViandas / 100) : 0
@@ -96,32 +122,18 @@ export function CartProvider({ children }) {
     const totalConDescuento = totalSinDescuento - descuentoViandas - descuentoPacks
 
     return {
-      descuentoViandas,
-      descuentoPacks,
-      porcentajeViandas,
-      porcentajePacks,
-      subtotalViandas,
-      subtotalPacks,
-      cantViandasSueltas,
-      totalConDescuento,
-      totalSinDescuento,
+      descuentoViandas, descuentoPacks, porcentajeViandas, porcentajePacks,
+      subtotalViandas, subtotalPacks, cantViandasSueltas, totalConDescuento, totalSinDescuento,
     }
   }
 
   return (
     <CartContext.Provider value={{
-      items,
-      setItems,
-      abierto,
-      setAbierto,
-      agregarItem,
-      quitarItem,
-      eliminarItem,
-      vaciarCarrito,
-      totalItems,
-      totalPrecio,
-      totalPuntos,
-      calcularDescuentos,
+      items, setItems, abierto, setAbierto,
+      agregarItem, quitarItem, eliminarItem, quitarCanje, vaciarCarrito,
+      totalItems, totalPrecio, subtotalBruto, totalDescuentoCanje,
+      totalPuntos, calcularDescuentos,
+      canjeItems, canjeActivo, puntosEnCanje,
     }}>
       {children}
     </CartContext.Provider>
