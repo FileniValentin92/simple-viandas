@@ -278,6 +278,12 @@ nav {
   .efectivo-label {
     font-size: 16px !important;
   }
+  .descuentos-label {
+    font-size: 12.6px !important;
+  }
+  .descuentos-extra {
+    display: none;
+  }
 }
 
 /* ─── PACK BOXES (ARMA TU PACK) ─── */
