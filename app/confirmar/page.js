@@ -146,13 +146,13 @@ export default function ConfirmarPage() {
       if (errorPedido) throw errorPedido
       await guardarDireccionEnPerfil()
       await descontarStock()
-      if (user?.id) {
+      // Efectivo: solo restar puntos del canje. Los puntos ganados se suman cuando admin confirma pago.
+      if (user?.id && puntosEnCanje > 0) {
         const { data: pf } = await supabase.from('perfiles').select('puntos').eq('id', user.id).single()
-        const nuevosPuntos = (pf?.puntos ?? 0) + totalPuntos - puntosEnCanje
-        await supabase.from('perfiles').update({ puntos: nuevosPuntos }).eq('id', user.id)
+        await supabase.from('perfiles').update({ puntos: (pf?.puntos ?? 0) - puntosEnCanje }).eq('id', user.id)
       }
       if (user?.email) await enviarEmailConfirmacion(user.email)
-      if (user?.id) cargarPerfil(user.id) // Refresh perfil context
+      if (user?.id) cargarPerfil(user.id)
       vaciarCarrito(); setExito(true)
     } catch (err) {
       console.error(err); setError('Hubo un problema al confirmar el pedido. Intentá de nuevo.'); setRedirigiendo(false)

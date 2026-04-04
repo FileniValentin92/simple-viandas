@@ -49,6 +49,10 @@ export default function AdminPage() {
   const [notasCocina, setNotasCocina] = useState({})
   const [vendidosSemana, setVendidosSemana] = useState({})
 
+  // Cambios pendientes del pedido abierto (estado + pago)
+  const [cambiosPedido, setCambiosPedido] = useState({})
+  const [guardandoCambios, setGuardandoCambios] = useState(false)
+
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) { setLogueado(true); setErrorPass(false) }
     else setErrorPass(true)
@@ -91,16 +95,45 @@ export default function AdminPage() {
     if (logueado && vistaActiva === 'reportes') cargarReporte(periodo)
   }, [periodo, vistaActiva])
 
-  const cambiarEstado = async (id, nuevoEstado) => {
-    await supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id)
-    setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p))
-    if (pedidoAbierto?.id === id) setPedidoAbierto(prev => ({ ...prev, estado: nuevoEstado }))
+  // Cambios locales (sin guardar en DB todavía)
+  const setEstadoLocal = (nuevoEstado) => {
+    setCambiosPedido(prev => ({ ...prev, estado: nuevoEstado }))
+  }
+  const setPagoEstadoLocal = (nuevoPago) => {
+    setCambiosPedido(prev => ({ ...prev, pago_estado: nuevoPago }))
   }
 
-  const cambiarPagoEstado = async (id, nuevoPagoEstado) => {
-    await supabase.from('pedidos').update({ pago_estado: nuevoPagoEstado }).eq('id', id)
-    setPedidos(prev => prev.map(p => p.id === id ? { ...p, pago_estado: nuevoPagoEstado } : p))
-    if (pedidoAbierto?.id === id) setPedidoAbierto(prev => ({ ...prev, pago_estado: nuevoPagoEstado }))
+  // Guardar cambios en DB + sumar puntos si corresponde
+  const guardarCambiosPedido = async () => {
+    if (!pedidoAbierto || Object.keys(cambiosPedido).length === 0) return
+    setGuardandoCambios(true)
+    const id = pedidoAbierto.id
+    try {
+      await supabase.from('pedidos').update(cambiosPedido).eq('id', id)
+
+      // Si pago_estado cambió de pendiente a pagado Y es efectivo → sumar puntos ganados
+      if (
+        cambiosPedido.pago_estado === 'pagado' &&
+        pedidoAbierto.pago_estado === 'pendiente' &&
+        pedidoAbierto.pago_metodo === 'efectivo' &&
+        pedidoAbierto.user_id &&
+        pedidoAbierto.puntos > 0
+      ) {
+        const { data: perfil } = await supabase.from('perfiles').select('puntos').eq('id', pedidoAbierto.user_id).single()
+        if (perfil) {
+          await supabase.from('perfiles').update({ puntos: (perfil.puntos ?? 0) + pedidoAbierto.puntos }).eq('id', pedidoAbierto.user_id)
+        }
+      }
+
+      // Actualizar estado local
+      const updated = { ...pedidoAbierto, ...cambiosPedido }
+      setPedidos(prev => prev.map(p => p.id === id ? { ...p, ...cambiosPedido } : p))
+      setPedidoAbierto(updated)
+      setCambiosPedido({})
+    } catch (err) {
+      console.error('Error guardando cambios:', err)
+    }
+    setGuardandoCambios(false)
   }
 
   const borrarPedido = async (id) => {
@@ -321,7 +354,7 @@ export default function AdminPage() {
                         const activo = pedidoAbierto?.id === pedido.id
                         return (
                           <tr key={pedido.id} style={{ borderBottom: '1px solid #F0F0F0', background: activo ? '#FAFAFA' : '#fff', cursor: 'pointer' }}
-                            onClick={() => { setPedidoAbierto(activo ? null : pedido); setConfirmandoBorrar(false) }}>
+                            onClick={() => { setPedidoAbierto(activo ? null : pedido); setConfirmandoBorrar(false); setCambiosPedido({}) }}>
                             <td style={{ padding: '14px 16px', fontSize: '12px', color: '#666', whiteSpace: 'nowrap' }}>{formatFecha(pedido.created_at)}</td>
                             <td style={{ padding: '14px 16px' }}>
                               <p style={{ fontSize: '13px', color: 'var(--black)', fontWeight: '400', marginBottom: '2px' }}>{pedido.nombre}</p>
@@ -389,23 +422,47 @@ export default function AdminPage() {
                         <span style={{ fontSize: '14px', color: 'var(--black)' }}>{pagoMetodoIconos[pedidoAbierto.pago_metodo]?.label || 'Efectivo'}</span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        {Object.entries(pagoEstadoColores).map(([key, val]) => (
-                          <button key={key} onClick={() => cambiarPagoEstado(pedidoAbierto.id, key)} style={{ background: pedidoAbierto.pago_estado === key ? val.bg : 'transparent', color: pedidoAbierto.pago_estado === key ? val.color : '#999', border: pedidoAbierto.pago_estado === key ? `1px solid ${val.color}60` : '1px solid #E0E0E0', padding: '10px 12px', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
-                            {pedidoAbierto.pago_estado === key ? '● ' : '○ '}{val.label}
-                          </button>
-                        ))}
+                        {Object.entries(pagoEstadoColores).map(([key, val]) => {
+                          const activo = (cambiosPedido.pago_estado || pedidoAbierto.pago_estado) === key
+                          return (
+                            <button key={key} onClick={() => setPagoEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}60` : '1px solid #E0E0E0', padding: '10px 12px', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>
+                              {activo ? '● ' : '○ '}{val.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                     <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
                       <p style={{ fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Estado del pedido</p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {Object.entries(estadoColores).map(([key, val]) => (
-                          <button key={key} onClick={() => cambiarEstado(pedidoAbierto.id, key)} style={{ background: pedidoAbierto.estado === key ? val.bg : 'transparent', color: pedidoAbierto.estado === key ? val.color : '#999', border: pedidoAbierto.estado === key ? `1px solid ${val.color}40` : '1px solid #E0E0E0', padding: '10px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', textAlign: 'left' }}>
-                            {pedidoAbierto.estado === key ? '● ' : '○ '}{val.label}
-                          </button>
-                        ))}
+                        {Object.entries(estadoColores).map(([key, val]) => {
+                          const activo = (cambiosPedido.estado || pedidoAbierto.estado) === key
+                          return (
+                            <button key={key} onClick={() => setEstadoLocal(key)} style={{ background: activo ? val.bg : 'transparent', color: activo ? val.color : '#999', border: activo ? `1px solid ${val.color}40` : '1px solid #E0E0E0', padding: '10px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer', textAlign: 'left' }}>
+                              {activo ? '● ' : '○ '}{val.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
+                    {/* Botón guardar cambios */}
+                    {Object.keys(cambiosPedido).length > 0 && (
+                      <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #F0F0F0' }}>
+                        <button onClick={guardarCambiosPedido} disabled={guardandoCambios} style={{
+                          width: '100%', background: guardandoCambios ? '#999' : 'var(--black)', color: 'var(--cream)',
+                          border: 'none', padding: '14px 16px', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                          fontFamily: 'Jost, sans-serif', cursor: guardandoCambios ? 'not-allowed' : 'pointer', fontWeight: '400',
+                        }}>
+                          {guardandoCambios ? 'Guardando...' : '✓ GUARDAR CAMBIOS'}
+                        </button>
+                        {cambiosPedido.pago_estado === 'pagado' && pedidoAbierto.pago_estado === 'pendiente' && pedidoAbierto.pago_metodo === 'efectivo' && pedidoAbierto.puntos > 0 && (
+                          <p style={{ fontSize: '11px', color: 'var(--olive)', marginTop: '8px', textAlign: 'center' }}>
+                            Se sumarán +{pedidoAbierto.puntos} pts al cliente
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       {!confirmandoBorrar ? (
                         <button onClick={() => setConfirmandoBorrar(true)} style={{ width: '100%', background: 'transparent', border: '1px solid #F8D7DA', color: '#721C24', padding: '10px 16px', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Jost, sans-serif', cursor: 'pointer' }}>🗑 Eliminar pedido</button>
