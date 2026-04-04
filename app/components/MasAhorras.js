@@ -63,11 +63,11 @@ export default function MasAhorras() {
             <AhorraCard key={item.cant} {...item} />
           ))}
         </div>
-        <p style={{ fontSize: '13px', color: 'rgba(247,243,236,0.4)', marginTop: '32px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
-          Los descuentos se aplican automáticamente al agregar viandas al carrito.
-        </p>
-        <p style={{ fontSize: 'clamp(25px, 3.5vw, 36px)', color: 'var(--gold)', marginTop: '16px', fontFamily: 'Playfair Display, serif', fontWeight: '400' }}>
+        <p style={{ fontSize: 'clamp(25px, 3.5vw, 36px)', color: 'var(--gold)', marginTop: '32px', fontFamily: 'Playfair Display, serif', fontWeight: '400' }}>
           Solo válido abonando en efectivo
+        </p>
+        <p style={{ fontSize: '17px', color: 'var(--cream)', marginTop: '16px', fontFamily: 'Jost, sans-serif', fontWeight: '300' }}>
+          Los descuentos se aplican automáticamente al agregar viandas al carrito.
         </p>
       </div>
     </section>
